@@ -72,7 +72,7 @@ class SynthVoice {
 // ---- polyphonic mode ----
 class SynthMode : public IMode {
  public:
-  static constexpr int kVoices = 4;   // keeps CPU headroom alongside the reverb
+  static constexpr int kVoices = 6;   // max pool; active count is runtime (SP_VOICES)
 
   void Init(float sample_rate, Hothouse& /*hw*/) override {
     for (int i = 0; i < kVoices; ++i) v_[i].Init(sample_rate);
@@ -103,6 +103,7 @@ class SynthMode : public IMode {
     float subLvl = p.v[SP_SUB];
     float fenvAmt = p.v[SP_FENV_AMT];
     spread_ = p.v[SP_SPREAD];
+    voices_ = clampi(1 + static_cast<int>(p.v[SP_VOICES] * 5.0f + 0.5f), 1, kVoices);
 
     // ---- global LFO ----
     static const int lshapes[4] = {daisysp::Oscillator::WAVE_SIN,
@@ -131,7 +132,7 @@ class SynthMode : public IMode {
       v_[i].subLvl = subLvl;
       v_[i].fenvAmt = fenvAmt;
       v_[i].pitchMod = pitchMul;
-      float pos = (kVoices > 1 ? (float)i / (kVoices - 1) - 0.5f : 0.0f) * 2.0f * spread_;
+      float pos = (voices_ > 1 ? (float)i / (voices_ - 1) - 0.5f : 0.0f) * 2.0f * spread_;
       panL_[i] = 0.5f * (1.0f - pos);
       panR_[i] = 0.5f * (1.0f + pos);
     }
@@ -141,7 +142,7 @@ class SynthMode : public IMode {
                     AudioHandle::OutputBuffer out, size_t size) override {
     for (size_t n = 0; n < size; ++n) {
       float l = 0.0f, r = 0.0f;
-      for (int i = 0; i < kVoices; ++i) {
+      for (int i = 0; i < voices_; ++i) {
         if (!v_[i].Active()) continue;
         float s = v_[i].Process() * drive_;
         l += s * panL_[i];
@@ -153,17 +154,18 @@ class SynthMode : public IMode {
   }
 
   void NoteOn(float note, float velocity) override {
-    for (int i = 0; i < kVoices; ++i)
+    for (int i = 0; i < voices_; ++i)
       if (v_[i].Gate() && v_[i].Note() == note) { v_[i].NoteOn(note, velocity); return; }
-    for (int i = 0; i < kVoices; ++i)
+    for (int i = 0; i < voices_; ++i)
       if (!v_[i].Active()) { v_[i].NoteOn(note, velocity); return; }
-    for (int i = 0; i < kVoices; ++i)
+    for (int i = 0; i < voices_; ++i)
       if (!v_[i].Gate()) { v_[i].NoteOn(note, velocity); return; }
+    if (steal_ >= voices_) steal_ = 0;
     v_[steal_].NoteOn(note, velocity);
-    steal_ = (steal_ + 1) % kVoices;
+    steal_ = (steal_ + 1) % voices_;
   }
   void NoteOff(float note) override {
-    for (int i = 0; i < kVoices; ++i)
+    for (int i = 0; i < voices_; ++i)
       if (v_[i].Gate() && v_[i].Note() == note) { v_[i].NoteOff(); break; }
   }
 
@@ -174,6 +176,7 @@ class SynthMode : public IMode {
   daisysp::Oscillator lfo_;
   float panL_[kVoices] = {0}, panR_[kVoices] = {0};
   float drive_ = 1.0f, spread_ = 0.6f, trem_ = 1.0f;
+  int   voices_ = 4;
   int   steal_ = 0;
 };
 

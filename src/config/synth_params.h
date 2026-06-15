@@ -23,12 +23,13 @@ enum SynthParam {
   SP_LFO_DEPTH,    // LFO depth
   SP_LFO_SHAPE,    // LFO shape (0..1 -> Sin / Tri / Saw / Sqr)
   SP_LFO_DEST,     // LFO destination (0..1 -> Off / Vibrato / Filter / Tremolo)
+  SP_VOICES,       // polyphony (0..1 -> 1..6 voices; fewer = more CPU headroom)
   SP_COUNT,
 };
 
 struct SynthParams {
   float v[SP_COUNT] = {0.25f, 0.40f, 0.70f, 0.30f, 0.50f, 0.30f, 0.00f, 0.60f, 0.66f,
-                       0.30f, 0.00f, 0.00f, 0.33f};
+                       0.30f, 0.00f, 0.00f, 0.33f, 0.60f};
 };
 
 extern SynthParams g_synthParams;  // defined in main.cpp

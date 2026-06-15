@@ -179,7 +179,7 @@ int main() {
     led1.Update();
     led2.Update();
 
-    hw.DelayMs(2);
+    hw.DelayMs(1);  // poll USB MIDI often so the RX FIFO never backs up (dropped notes)
     hw.CheckResetToBootloader();
   }
   return 0;

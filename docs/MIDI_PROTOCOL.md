@@ -23,8 +23,16 @@ CC value `0..127` maps to the normalized `0..1` knob value and is applied with
 
 | CC#    | Target                          |
 |--------|---------------------------------|
+| 16     | Mode select (0/64/127 → synth / granular / generative) |
+| 17     | FX select (0/64/127 → off / delay / reverb) |
 | 20–25  | MODE-layer knobs 1–6 (active mode's macros) |
 | 26–31  | FX-layer knobs 1–6 (mix / delay time / fb / tone / rev decay / damp) |
+| 40–53  | Synth panel params (`SP_*`, see `config/synth_params.h`) |
+
+Synth-panel CCs (CC `kCcSynthBase` + index): 40 detune · 41 sub · 42 sustain ·
+43 release · 44 f.env amt · 45 f.env time · 46 glide · 47 width · 48 wave · 49 LFO
+rate · 50 LFO depth · 51 LFO shape · 52 LFO dest · **53 voices** (0..1 → 1..6;
+fewer voices = more CPU headroom for reverb/LFO, 1 = mono).
 
 Notes (NoteOn/NoteOff) play the synth voice as before.
 
