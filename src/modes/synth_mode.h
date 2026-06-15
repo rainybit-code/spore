@@ -1,17 +1,17 @@
 // =============================================================================
-//  synth_mode.h  --  MODE 1: playable synth (Phase 2: polyphonic).
+//  synth_mode.h  --  MODE 1: polyphonic synth (Phase 2/3: poly + LFO).
 // =============================================================================
-//  A pool of voices (note allocation + steal), each: 2 detuned oscillators + sub
-//  -> Moog ladder filter -> ADSR, with a dedicated filter envelope. Velocity ->
-//  loudness + brightness. Voices are panned by the Width param for a stereo
-//  spread. Knobs 1..6: cutoff, resonance, attack, decay, LFO mod depth, drive.
-//  Waveform + detune/sub/sustain/release/filter-env/width come from the
-//  Propagator synth panel (g_synthParams). (Glide is a mono feature; unused here.)
+//  Voice pool (note alloc + graceful steal). Each voice: 2 detuned osc + sub ->
+//  state-variable lowpass (cheap) -> ADSR + filter envelope; velocity drives
+//  loudness + brightness. A global LFO (rate/depth/shape) routes to vibrato,
+//  filter, or tremolo. Voices panned by Width for stereo.
+//    KNOB 1: cutoff  2: resonance  3: attack  4: decay  5: LFO depth  6: drive
+//  Waveform + the extended/LFO params come from the Propagator panels
+//  (g_synthParams). Lighter filter + fewer voices to coexist with the reverb.
 // =============================================================================
 #pragma once
 
 #include "daisysp.h"
-#include "daisysp-lgpl.h"  // MoogLadder
 #include "modes/mode.h"
 #include "config/params.h"
 #include "config/synth_params.h"
@@ -41,24 +41,26 @@ class SynthVoice {
   bool Gate() const { return gate_; }
   float Note() const { return note_; }
 
-  // per-block params from the mode
-  float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f;
+  // per-block params set by the mode
+  float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f, pitchMod = 1.f;
 
   inline float Process() {
-    osc_[0].SetFreq(freq_ * (1.0f - detune));
-    osc_[1].SetFreq(freq_ * (1.0f + detune));
-    sub_.SetFreq(freq_ * 0.5f);
+    float f = freq_ * pitchMod;
+    osc_[0].SetFreq(f * (1.0f - detune));
+    osc_[1].SetFreq(f * (1.0f + detune));
+    sub_.SetFreq(f * 0.5f);
     float env = amp_.Process(gate_);
     float fe = fenv_.Process();
     float vb = 0.4f + 0.6f * vel_;
-    float fc = daisysp::fclamp(cutoff * vb * (1.0f + fenvAmt * 5.0f * fe), 20.0f, 18000.0f);
+    float fc = daisysp::fclamp(cutoff * vb * (1.0f + fenvAmt * 5.0f * fe), 20.0f, 16000.0f);
     flt_.SetFreq(fc);
     float sig = (osc_[0].Process() + osc_[1].Process()) * 0.5f + sub_.Process() * subLvl;
-    return flt_.Process(sig * 0.6f) * env * vel_;
+    flt_.Process(sig * 0.6f);
+    return flt_.Low() * env * vel_;
   }
 
-  daisysp::Adsr      amp_;
-  daisysp::MoogLadder flt_;
+  daisysp::Adsr amp_;
+  daisysp::Svf  flt_;
 
  private:
   daisysp::Oscillator osc_[2], sub_;
@@ -70,10 +72,11 @@ class SynthVoice {
 // ---- polyphonic mode ----
 class SynthMode : public IMode {
  public:
-  static constexpr int kVoices = 6;
+  static constexpr int kVoices = 4;   // keeps CPU headroom alongside the reverb
 
   void Init(float sample_rate, Hothouse& /*hw*/) override {
     for (int i = 0; i < kVoices; ++i) v_[i].Init(sample_rate);
+    lfo_.Init(sample_rate / params::audio::kBlockSize);  // LFO ticked once per block
   }
 
   void Control(Hothouse& hw, ModContext& ctx) override {
@@ -84,14 +87,13 @@ class SynthMode : public IMode {
                                  daisysp::Oscillator::WAVE_POLYBLEP_TRI,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SAW,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SQUARE};
-    int wi = static_cast<int>(p.v[SP_WAVE] * 3.99f);
-    int wf = waves[wi < 0 ? 0 : (wi > 3 ? 3 : wi)];
+    int wf = waves[clampi(static_cast<int>(p.v[SP_WAVE] * 3.99f), 0, 3)];
 
     float cutoff = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz, daisysp::Mapping::EXP);
-    float res = daisysp::fmap(ctx.knob[Hothouse::KNOB_2], kResMin, kResMax, daisysp::Mapping::LINEAR);
+    float res = daisysp::fmap(ctx.knob[Hothouse::KNOB_2], 0.0f, 0.85f, daisysp::Mapping::LINEAR);
     float atk = daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS, kAttackMaxS, daisysp::Mapping::EXP);
     float dec = daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS, daisysp::Mapping::EXP);
-    float modDepth = ctx.knob[Hothouse::KNOB_5] * kModDepthMax;
+    float lfoKnob = ctx.knob[Hothouse::KNOB_5];
     drive_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_6], 1.0f, 1.8f, daisysp::Mapping::EXP);
 
     float sus = p.v[SP_SUSTAIN];
@@ -102,23 +104,33 @@ class SynthMode : public IMode {
     float fenvAmt = p.v[SP_FENV_AMT];
     spread_ = p.v[SP_SPREAD];
 
-    float lfo = ctx.mod.Lfo1();
-    float sensor = (ctx.sensors.Value(0) - 0.5f) * 2.0f;
-    float modCut = 1.0f + modDepth * lfo + 0.3f * modDepth * sensor;
+    // ---- global LFO ----
+    static const int lshapes[4] = {daisysp::Oscillator::WAVE_SIN,
+                                   daisysp::Oscillator::WAVE_TRI,
+                                   daisysp::Oscillator::WAVE_SAW,
+                                   daisysp::Oscillator::WAVE_SQUARE};
+    lfo_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO_SHAPE] * 3.99f), 0, 3)]);
+    lfo_.SetFreq(daisysp::fmap(p.v[SP_LFO_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP));
+    float lfo = lfo_.Process();
+    float depth = daisysp::fclamp(p.v[SP_LFO_DEPTH] + lfoKnob, 0.0f, 1.0f);
+    int dest = clampi(static_cast<int>(p.v[SP_LFO_DEST] * 3.99f), 0, 3);  // off/vibrato/filter/tremolo
+    float pitchMul = (dest == 1) ? (1.0f + lfo * depth * 0.06f) : 1.0f;
+    float cutMul   = (dest == 2) ? (1.0f + lfo * depth * 0.9f) : 1.0f;
+    trem_          = (dest == 3) ? (1.0f - depth * 0.5f * (0.5f - 0.5f * lfo)) : 1.0f;
 
     for (int i = 0; i < kVoices; ++i) {
       v_[i].SetWave(wf);
+      v_[i].SetFenvDecay(fenvTime);
       v_[i].amp_.SetAttackTime(atk);
       v_[i].amp_.SetDecayTime(dec);
       v_[i].amp_.SetSustainLevel(sus);
       v_[i].amp_.SetReleaseTime(rel);
       v_[i].flt_.SetRes(res);
-      v_[i].SetFenvDecay(fenvTime);
-      v_[i].cutoff = cutoff * modCut;
+      v_[i].cutoff = cutoff * cutMul;
       v_[i].detune = detune;
       v_[i].subLvl = subLvl;
       v_[i].fenvAmt = fenvAmt;
-      // per-voice pan from Width (voices fanned across the stereo field)
+      v_[i].pitchMod = pitchMul;
       float pos = (kVoices > 1 ? (float)i / (kVoices - 1) - 0.5f : 0.0f) * 2.0f * spread_;
       panL_[i] = 0.5f * (1.0f - pos);
       panR_[i] = 0.5f * (1.0f + pos);
@@ -135,22 +147,18 @@ class SynthMode : public IMode {
         l += s * panL_[i];
         r += s * panR_[i];
       }
-      out[0][n] = l * 0.32f;   // headroom so stacked voices don't clip the limiter
-      out[1][n] = r * 0.32f;
+      out[0][n] = l * 0.4f * trem_;
+      out[1][n] = r * 0.4f * trem_;
     }
   }
 
   void NoteOn(float note, float velocity) override {
-    // 1) reuse the voice already playing this note (repeated/retriggered note)
     for (int i = 0; i < kVoices; ++i)
       if (v_[i].Gate() && v_[i].Note() == note) { v_[i].NoteOn(note, velocity); return; }
-    // 2) a free (idle) voice
     for (int i = 0; i < kVoices; ++i)
       if (!v_[i].Active()) { v_[i].NoteOn(note, velocity); return; }
-    // 3) steal one that's only in its release tail (not held)
     for (int i = 0; i < kVoices; ++i)
       if (!v_[i].Gate()) { v_[i].NoteOn(note, velocity); return; }
-    // 4) last resort: round-robin steal
     v_[steal_].NoteOn(note, velocity);
     steal_ = (steal_ + 1) % kVoices;
   }
@@ -160,9 +168,12 @@ class SynthMode : public IMode {
   }
 
  private:
+  static int clampi(int x, int lo, int hi) { return x < lo ? lo : (x > hi ? hi : x); }
+
   SynthVoice v_[kVoices];
+  daisysp::Oscillator lfo_;
   float panL_[kVoices] = {0}, panR_[kVoices] = {0};
-  float drive_ = 1.0f, spread_ = 0.6f;
+  float drive_ = 1.0f, spread_ = 0.6f, trem_ = 1.0f;
   int   steal_ = 0;
 };
 
