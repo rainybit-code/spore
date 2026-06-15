@@ -76,6 +76,12 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
   (8 MB), read back memory-mapped, played by a sample-player source (feeds granular
   or a new mode). Biggest piece; the real driver for using QSPI as data storage
   (note: data in QSPI does NOT require `BOOT_QSPI` — code can stay in internal flash).
+- 💡 **MIDI clock / tempo sync** — the Propagator BPM dial is currently a visual
+  metronome only; nothing in the firmware uses tempo. Make it real: browser
+  transmits **MIDI Clock** (`0xF8`, 24 ppqn) + Start/Stop at the set BPM; firmware
+  derives BPM and syncs tempo-able params to note divisions — generative **event
+  rate**, FX **delay time** (1/4, dotted-1/8…), and mod **LFO rates**. Add a per-param
+  "free vs. synced" toggle. (Pairs with the central Patch / mod-matrix.)
 - 💡 **protobuf for the protocol** — instead of hand-rolled SysEx byte layouts, define
   messages in `.proto` and codegen both ends (**nanopb** on firmware, **protobuf.js**
   in the browser); frame the encoded bytes in SysEx (7→8-bit). Schema-driven, versioned,
