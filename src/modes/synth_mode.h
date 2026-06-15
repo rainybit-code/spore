@@ -92,7 +92,7 @@ class SynthMode : public IMode {
     float atk = daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS, kAttackMaxS, daisysp::Mapping::EXP);
     float dec = daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS, daisysp::Mapping::EXP);
     float modDepth = ctx.knob[Hothouse::KNOB_5] * kModDepthMax;
-    drive_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_6], 1.0f, 2.2f, daisysp::Mapping::EXP);
+    drive_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_6], 1.0f, 1.8f, daisysp::Mapping::EXP);
 
     float sus = p.v[SP_SUSTAIN];
     float rel = daisysp::fmap(p.v[SP_RELEASE], 0.02f, 3.0f, daisysp::Mapping::EXP);
@@ -135,16 +135,24 @@ class SynthMode : public IMode {
         l += s * panL_[i];
         r += s * panR_[i];
       }
-      out[0][n] = l * 0.5f;
-      out[1][n] = r * 0.5f;
+      out[0][n] = l * 0.32f;   // headroom so stacked voices don't clip the limiter
+      out[1][n] = r * 0.32f;
     }
   }
 
   void NoteOn(float note, float velocity) override {
-    int idx = -1;
-    for (int i = 0; i < kVoices; ++i) if (!v_[i].Active()) { idx = i; break; }
-    if (idx < 0) { idx = steal_; steal_ = (steal_ + 1) % kVoices; }  // steal round-robin
-    v_[idx].NoteOn(note, velocity);
+    // 1) reuse the voice already playing this note (repeated/retriggered note)
+    for (int i = 0; i < kVoices; ++i)
+      if (v_[i].Gate() && v_[i].Note() == note) { v_[i].NoteOn(note, velocity); return; }
+    // 2) a free (idle) voice
+    for (int i = 0; i < kVoices; ++i)
+      if (!v_[i].Active()) { v_[i].NoteOn(note, velocity); return; }
+    // 3) steal one that's only in its release tail (not held)
+    for (int i = 0; i < kVoices; ++i)
+      if (!v_[i].Gate()) { v_[i].NoteOn(note, velocity); return; }
+    // 4) last resort: round-robin steal
+    v_[steal_].NoteOn(note, velocity);
+    steal_ = (steal_ + 1) % kVoices;
   }
   void NoteOff(float note) override {
     for (int i = 0; i < kVoices; ++i)
