@@ -82,6 +82,17 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
   derives BPM and syncs tempo-able params to note divisions — generative **event
   rate**, FX **delay time** (1/4, dotted-1/8…), and mod **LFO rates**. Add a per-param
   "free vs. synced" toggle. (Pairs with the central Patch / mod-matrix.)
+- 🅲 **USB audio (UAC, composite with MIDI)** — make the pedal a USB audio
+  interface (record dry/wet into a DAW, use as a computer FX processor). Feasible:
+  the STM32H750 USB is full-speed (stereo 48k/24-bit fits) and the ST **AUDIO**
+  class + **CompositeBuilder** source is already vendored in libDaisy — but libDaisy
+  doesn't wire it up (it only wraps CDC/MIDI/MSC). Build-it-yourself: add the
+  AudioControl/AudioStreaming descriptors, an `usbd_audio_if` implementation, a ring
+  buffer between the SAI callback and USB endpoints, and an **async feedback endpoint**
+  to sync the codec clock to USB SOF (the hard part — drift/clicks otherwise), all
+  composed with MIDIStreaming. Substantial + experimental; can only be tuned on
+  hardware; adds buffering latency vs the analog jacks. Not needed for standalone
+  pedal use (the Hothouse has analog stereo I/O).
 - 💡 **protobuf for the protocol** — instead of hand-rolled SysEx byte layouts, define
   messages in `.proto` and codegen both ends (**nanopb** on firmware, **protobuf.js**
   in the browser); frame the encoded bytes in SysEx (7→8-bit). Schema-driven, versioned,
