@@ -1,13 +1,12 @@
 // =============================================================================
-//  synth_mode.h  --  MODE 1: playable synth voice (Phase 1: fat analog mono).
+//  synth_mode.h  --  MODE 1: playable synth (Phase 2: polyphonic).
 // =============================================================================
-//  3 detuned oscillators + sub-osc -> stereo Moog ladder filters -> ADSR, with a
-//  dedicated filter envelope, glide, and velocity (loudness + brightness).
-//    KNOB 1: cutoff   KNOB 2: resonance   KNOB 3: attack   KNOB 4: decay
-//    KNOB 5: LFO mod depth   KNOB 6: drive
-//    TOGGLE 2: waveform (UP sine / MID square / DOWN saw)
-//  Extended params (detune, sub, sustain, release, filter-env amt/time, glide,
-//  width) come from the Propagator synth panel over MIDI -> g_synthParams.
+//  A pool of voices (note allocation + steal), each: 2 detuned oscillators + sub
+//  -> Moog ladder filter -> ADSR, with a dedicated filter envelope. Velocity ->
+//  loudness + brightness. Voices are panned by the Width param for a stereo
+//  spread. Knobs 1..6: cutoff, resonance, attack, decay, LFO mod depth, drive.
+//  Waveform + detune/sub/sustain/release/filter-env/width come from the
+//  Propagator synth panel (g_synthParams). (Glide is a mono feature; unused here.)
 // =============================================================================
 #pragma once
 
@@ -19,123 +18,144 @@
 
 namespace synthbox {
 
+// ---- one polyphonic voice ----
+class SynthVoice {
+ public:
+  void Init(float sr) {
+    osc_[0].Init(sr); osc_[1].Init(sr); sub_.Init(sr);
+    sub_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SQUARE);
+    flt_.Init(sr);
+    amp_.Init(sr);
+    fenv_.Init(sr); fenv_.SetMin(0.0f); fenv_.SetMax(1.0f);
+    fenv_.SetTime(daisysp::ADENV_SEG_ATTACK, 0.005f);
+  }
+  void SetWave(int wf) { osc_[0].SetWaveform(wf); osc_[1].SetWaveform(wf); }
+  void SetFenvDecay(float t) { fenv_.SetTime(daisysp::ADENV_SEG_DECAY, t); }
+
+  void NoteOn(float note, float vel) {
+    note_ = note; freq_ = daisysp::mtof(note); vel_ = vel;
+    gate_ = true; fenv_.Trigger();
+  }
+  void NoteOff() { gate_ = false; }
+  bool Active() const { return gate_ || amp_.IsRunning(); }
+  bool Gate() const { return gate_; }
+  float Note() const { return note_; }
+
+  // per-block params from the mode
+  float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f;
+
+  inline float Process() {
+    osc_[0].SetFreq(freq_ * (1.0f - detune));
+    osc_[1].SetFreq(freq_ * (1.0f + detune));
+    sub_.SetFreq(freq_ * 0.5f);
+    float env = amp_.Process(gate_);
+    float fe = fenv_.Process();
+    float vb = 0.4f + 0.6f * vel_;
+    float fc = daisysp::fclamp(cutoff * vb * (1.0f + fenvAmt * 5.0f * fe), 20.0f, 18000.0f);
+    flt_.SetFreq(fc);
+    float sig = (osc_[0].Process() + osc_[1].Process()) * 0.5f + sub_.Process() * subLvl;
+    return flt_.Process(sig * 0.6f) * env * vel_;
+  }
+
+  daisysp::Adsr      amp_;
+  daisysp::MoogLadder flt_;
+
+ private:
+  daisysp::Oscillator osc_[2], sub_;
+  daisysp::AdEnv      fenv_;
+  float note_ = 0.f, freq_ = 220.f, vel_ = 0.8f;
+  bool  gate_ = false;
+};
+
+// ---- polyphonic mode ----
 class SynthMode : public IMode {
  public:
+  static constexpr int kVoices = 6;
+
   void Init(float sample_rate, Hothouse& /*hw*/) override {
-    sr_ = sample_rate;
-    for (int i = 0; i < 3; ++i) {
-      osc_[i].Init(sample_rate);
-      osc_[i].SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
-    }
-    sub_.Init(sample_rate);
-    sub_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SQUARE);
-    fltL_.Init(sample_rate);
-    fltR_.Init(sample_rate);
-    ampEnv_.Init(sample_rate);
-    fenv_.Init(sample_rate);
-    fenv_.SetMin(0.0f);
-    fenv_.SetMax(1.0f);
-    fenv_.SetTime(daisysp::ADENV_SEG_ATTACK, 0.005f);
-    port_.Init(sample_rate, 0.02f);
+    for (int i = 0; i < kVoices; ++i) v_[i].Init(sample_rate);
   }
 
   void Control(Hothouse& hw, ModContext& ctx) override {
     using namespace params::synth;
     const SynthParams& p = g_synthParams;
 
-    // Waveform from the synth panel (SP_WAVE). Sin / Tri / Saw / Sqr.
     static const int waves[4] = {daisysp::Oscillator::WAVE_SIN,
                                  daisysp::Oscillator::WAVE_POLYBLEP_TRI,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SAW,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SQUARE};
     int wi = static_cast<int>(p.v[SP_WAVE] * 3.99f);
     int wf = waves[wi < 0 ? 0 : (wi > 3 ? 3 : wi)];
-    for (int i = 0; i < 3; ++i) osc_[i].SetWaveform(wf);
 
-    cutoff_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz,
-                            daisysp::Mapping::EXP);
-    res_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_2], kResMin, kResMax,
-                         daisysp::Mapping::LINEAR);
-    ampEnv_.SetAttackTime(daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS,
-                                        kAttackMaxS, daisysp::Mapping::EXP));
-    ampEnv_.SetDecayTime(daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS,
-                                       kDecayMaxS, daisysp::Mapping::EXP));
-    modDepth_ = ctx.knob[Hothouse::KNOB_5] * kModDepthMax;
-    drive_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_6], 1.0f, 2.2f,
-                           daisysp::Mapping::EXP);
+    float cutoff = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz, daisysp::Mapping::EXP);
+    float res = daisysp::fmap(ctx.knob[Hothouse::KNOB_2], kResMin, kResMax, daisysp::Mapping::LINEAR);
+    float atk = daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS, kAttackMaxS, daisysp::Mapping::EXP);
+    float dec = daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS, daisysp::Mapping::EXP);
+    float modDepth = ctx.knob[Hothouse::KNOB_5] * kModDepthMax;
+    drive_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_6], 1.0f, 2.2f, daisysp::Mapping::EXP);
 
-    // Extended params from the synth panel (normalized 0..1).
-    ampEnv_.SetSustainLevel(p.v[SP_SUSTAIN]);
-    ampEnv_.SetReleaseTime(daisysp::fmap(p.v[SP_RELEASE], 0.02f, 3.0f, daisysp::Mapping::EXP));
-    fenv_.SetTime(daisysp::ADENV_SEG_DECAY,
-                  daisysp::fmap(p.v[SP_FENV_TIME], 0.03f, 2.5f, daisysp::Mapping::EXP));
-    port_.SetHtime(daisysp::fmap(p.v[SP_GLIDE], 0.0f, 0.4f, daisysp::Mapping::LINEAR));
-    detune_ = p.v[SP_DETUNE] * 0.012f;   // up to ~1.2% (~20 cents) spread
-    subLevel_ = p.v[SP_SUB];
-    fenvAmt_ = p.v[SP_FENV_AMT];
+    float sus = p.v[SP_SUSTAIN];
+    float rel = daisysp::fmap(p.v[SP_RELEASE], 0.02f, 3.0f, daisysp::Mapping::EXP);
+    float fenvTime = daisysp::fmap(p.v[SP_FENV_TIME], 0.03f, 2.5f, daisysp::Mapping::EXP);
+    float detune = p.v[SP_DETUNE] * 0.012f;
+    float subLvl = p.v[SP_SUB];
+    float fenvAmt = p.v[SP_FENV_AMT];
     spread_ = p.v[SP_SPREAD];
 
-    fltL_.SetRes(res_);
-    fltR_.SetRes(res_);
-
     float lfo = ctx.mod.Lfo1();
-    float sensor = (ctx.sensors.Value(0) - 0.5f) * 2.0f;  // neutral until wired
-    modCut_ = 1.0f + modDepth_ * lfo + 0.3f * modDepth_ * sensor;
-    velBright_ = 0.35f + 0.65f * amp_;
+    float sensor = (ctx.sensors.Value(0) - 0.5f) * 2.0f;
+    float modCut = 1.0f + modDepth * lfo + 0.3f * modDepth * sensor;
+
+    for (int i = 0; i < kVoices; ++i) {
+      v_[i].SetWave(wf);
+      v_[i].amp_.SetAttackTime(atk);
+      v_[i].amp_.SetDecayTime(dec);
+      v_[i].amp_.SetSustainLevel(sus);
+      v_[i].amp_.SetReleaseTime(rel);
+      v_[i].flt_.SetRes(res);
+      v_[i].SetFenvDecay(fenvTime);
+      v_[i].cutoff = cutoff * modCut;
+      v_[i].detune = detune;
+      v_[i].subLvl = subLvl;
+      v_[i].fenvAmt = fenvAmt;
+      // per-voice pan from Width (voices fanned across the stereo field)
+      float pos = (kVoices > 1 ? (float)i / (kVoices - 1) - 0.5f : 0.0f) * 2.0f * spread_;
+      panL_[i] = 0.5f * (1.0f - pos);
+      panR_[i] = 0.5f * (1.0f + pos);
+    }
   }
 
   void ProcessBlock(AudioHandle::InputBuffer /*in*/,
                     AudioHandle::OutputBuffer out, size_t size) override {
-    const float wHi = 0.5f + spread_ * 0.5f, wLo = 0.5f - spread_ * 0.5f;
-    for (size_t i = 0; i < size; ++i) {
-      float base = port_.Process(targetFreq_);
-      osc_[0].SetFreq(base * (1.0f - detune_));
-      osc_[1].SetFreq(base);
-      osc_[2].SetFreq(base * (1.0f + detune_));
-      sub_.SetFreq(base * 0.5f);
-
-      float env = ampEnv_.Process(gate_);
-      float fe = fenv_.Process();
-      float fc = daisysp::fclamp(
-          cutoff_ * velBright_ * modCut_ * (1.0f + fenvAmt_ * 6.0f * fe), 20.0f,
-          18000.0f);
-      fltL_.SetFreq(fc);
-      fltR_.SetFreq(fc);
-
-      float s0 = osc_[0].Process(), s1 = osc_[1].Process(), s2 = osc_[2].Process();
-      float ss = sub_.Process() * subLevel_;
-      float center = s1 * 0.5f + ss;
-      float l = (center + s0 * wHi + s2 * wLo) * 0.33f * drive_;
-      float r = (center + s2 * wHi + s0 * wLo) * 0.33f * drive_;
-      out[0][i] = fltL_.Process(l) * env * amp_ * 0.6f;
-      out[1][i] = fltR_.Process(r) * env * amp_ * 0.6f;
+    for (size_t n = 0; n < size; ++n) {
+      float l = 0.0f, r = 0.0f;
+      for (int i = 0; i < kVoices; ++i) {
+        if (!v_[i].Active()) continue;
+        float s = v_[i].Process() * drive_;
+        l += s * panL_[i];
+        r += s * panR_[i];
+      }
+      out[0][n] = l * 0.5f;
+      out[1][n] = r * 0.5f;
     }
   }
 
   void NoteOn(float note, float velocity) override {
-    targetFreq_ = daisysp::mtof(note);
-    if (held_ == 0) { gate_ = true; fenv_.Trigger(); }  // retrigger only on first key
-    held_++;
-    amp_ = velocity;
+    int idx = -1;
+    for (int i = 0; i < kVoices; ++i) if (!v_[i].Active()) { idx = i; break; }
+    if (idx < 0) { idx = steal_; steal_ = (steal_ + 1) % kVoices; }  // steal round-robin
+    v_[idx].NoteOn(note, velocity);
   }
-  void NoteOff(float /*note*/) override {
-    if (held_ > 0) held_--;
-    if (held_ == 0) gate_ = false;  // release when the last key lifts
+  void NoteOff(float note) override {
+    for (int i = 0; i < kVoices; ++i)
+      if (v_[i].Gate() && v_[i].Note() == note) { v_[i].NoteOff(); break; }
   }
 
  private:
-  daisysp::Oscillator osc_[3], sub_;
-  daisysp::MoogLadder fltL_, fltR_;
-  daisysp::Adsr       ampEnv_;
-  daisysp::AdEnv      fenv_;
-  daisysp::Port       port_;
-  float sr_ = 48000.0f;
-  float targetFreq_ = 220.0f, amp_ = 0.8f;
-  int   held_ = 0;
-  bool  gate_ = false;
-  float cutoff_ = 1000.0f, res_ = 0.4f, modDepth_ = 0.0f, drive_ = 1.0f;
-  float detune_ = 0.005f, subLevel_ = 0.4f, fenvAmt_ = 0.5f, spread_ = 0.6f;
-  float modCut_ = 1.0f, velBright_ = 1.0f;
+  SynthVoice v_[kVoices];
+  float panL_[kVoices] = {0}, panR_[kVoices] = {0};
+  float drive_ = 1.0f, spread_ = 0.6f;
+  int   steal_ = 0;
 };
 
 }  // namespace synthbox
