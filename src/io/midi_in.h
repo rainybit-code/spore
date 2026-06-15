@@ -22,7 +22,8 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 // Drain pending MIDI events. Notes -> active mode; CC -> live knob values
 // (the WebMIDI management interface, Phase 1). See docs/MIDI_PROTOCOL.md.
 // Returns true if any event was processed (used to blink a MIDI-activity LED).
-inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift) {
+inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift,
+                     int& modeSel, int& fxSel) {
   bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
@@ -50,6 +51,10 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n >= params::midi::kCcFxKnobBase &&
                  n < params::midi::kCcFxKnobBase + ShiftKnobs::kKnobs)
           shift.SetValue(ShiftKnobs::FX, n - params::midi::kCcFxKnobBase, v);
+        else if (n == params::midi::kCcModeSelect)
+          modeSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
+        else if (n == params::midi::kCcFxSelect)
+          fxSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
       } break;
       default:
         break;

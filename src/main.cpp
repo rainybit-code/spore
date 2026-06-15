@@ -49,6 +49,14 @@ bool            g_bypass = false;
 bool            g_fx_edit_latch = false;  // distinguishes FS1 tap vs hold-to-edit
 uint32_t        g_last_midi_ms = 0;       // for the onboard MIDI-activity LED
 
+// TEMP bare-Seed bench: with no Hothouse, the mode toggle floats to "middle".
+// Leave false now that mode is selectable over MIDI (CC 16) from the web tool.
+static constexpr bool kBenchForceSynth = false;
+
+// MIDI/web overrides for mode + FX select (-1 = use the physical toggle).
+int g_modeSel = -1;
+int g_fxSel = -1;
+
 Led led1, led2;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
@@ -57,15 +65,17 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   g_sensors.Process();
   g_mod.Process();
 
-  // Mode select from TOGGLE 1.
-  int sel = CurrentMode(hw);
+  // Mode: web/MIDI override (CC 16) wins, else physical TOGGLE 1 (bench forces Synth).
+  int sel = kBenchForceSynth ? MODE_SYNTH
+                             : (g_modeSel >= 0 ? g_modeSel : CurrentMode(hw));
   if (sel != g_active) {
     g_active = sel;
     g_modes[g_active]->OnEnter();
   }
 
-  // FX select from TOGGLE 3 (0=off, 1=delay, 2=reverb).
-  g_fx.SetMode(static_cast<GlobalFx::Mode>(TogglePos(hw, Hothouse::TOGGLESWITCH_3)));
+  // FX: web/MIDI override (CC 17) wins, else physical TOGGLE 3.
+  int fxsel = g_fxSel >= 0 ? g_fxSel : TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  g_fx.SetMode(static_cast<GlobalFx::Mode>(fxsel));
 
   // FOOTSWITCH 1: hold = edit FX (knobs -> FX layer); quick tap = bypass toggle.
   bool fx_editing = hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
@@ -150,7 +160,7 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    if (PumpMidi(midi, g_modes[g_active], g_shift)) g_last_midi_ms = System::GetNow();
+    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel)) g_last_midi_ms = System::GetNow();
     // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
     {
       uint32_t now = System::GetNow();

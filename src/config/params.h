@@ -143,6 +143,8 @@ constexpr float kPickupBand    = 0.03f;     // soft-takeover catch window (0..1)
 namespace midi {
 constexpr int kCcModeKnobBase = 20;  // CC 20..25 -> MODE-layer knobs 1..6
 constexpr int kCcFxKnobBase   = 26;  // CC 26..31 -> FX-layer knobs 1..6
+constexpr int kCcModeSelect   = 16;  // CC 16 -> mode  (0..42 synth / 43..85 granular / 86..127 generative)
+constexpr int kCcFxSelect     = 17;  // CC 17 -> FX    (0..42 off   / 43..85 delay    / 86..127 reverb)
 }  // namespace midi
 
 }  // namespace params
