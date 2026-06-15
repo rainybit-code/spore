@@ -8,6 +8,7 @@
 
 #include "daisy_seed.h"
 #include "config/params.h"
+#include "config/synth_params.h"
 #include "io/knobs.h"
 #include "modes/mode.h"
 
@@ -55,6 +56,9 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
           modeSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
         else if (n == params::midi::kCcFxSelect)
           fxSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
+        else if (n >= params::midi::kCcSynthBase &&
+                 n < params::midi::kCcSynthBase + SP_COUNT)
+          g_synthParams.v[n - params::midi::kCcSynthBase] = v;
       } break;
       default:
         break;

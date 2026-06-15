@@ -57,6 +57,9 @@ static constexpr bool kBenchForceSynth = false;
 int g_modeSel = -1;
 int g_fxSel = -1;
 
+// extended synth params (set over MIDI CC 40+ from the Propagator synth panel)
+synthbox::SynthParams synthbox::g_synthParams;
+
 Led led1, led2;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,

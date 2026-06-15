@@ -145,6 +145,7 @@ constexpr int kCcModeKnobBase = 20;  // CC 20..25 -> MODE-layer knobs 1..6
 constexpr int kCcFxKnobBase   = 26;  // CC 26..31 -> FX-layer knobs 1..6
 constexpr int kCcModeSelect   = 16;  // CC 16 -> mode  (0..42 synth / 43..85 granular / 86..127 generative)
 constexpr int kCcFxSelect     = 17;  // CC 17 -> FX    (0..42 off   / 43..85 delay    / 86..127 reverb)
+constexpr int kCcSynthBase    = 40;  // CC 40.. -> extended synth params (see config/synth_params.h)
 }  // namespace midi
 
 }  // namespace params
