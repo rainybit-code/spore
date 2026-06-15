@@ -31,9 +31,12 @@ class SynthVoice {
   }
   void SetWave(int wf) { osc_[0].SetWaveform(wf); osc_[1].SetWaveform(wf); }
   void SetFenvDecay(float t) { fenv_.SetTime(daisysp::ADENV_SEG_DECAY, t); }
+  void SetGlide(float coef) { glideCoef_ = coef; }  // 1 = instant, <1 = portamento
 
   void NoteOn(float note, float vel) {
-    note_ = note; freq_ = daisysp::mtof(note); vel_ = vel;
+    bool fresh = !Active();   // a brand-new voice snaps; a legato re-trigger glides
+    note_ = note; targetFreq_ = daisysp::mtof(note); vel_ = vel;
+    if (fresh) freq_ = targetFreq_;
     gate_ = true; fenv_.Trigger();
   }
   void NoteOff() { gate_ = false; }
@@ -45,6 +48,7 @@ class SynthVoice {
   float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f, pitchMod = 1.f;
 
   inline float Process() {
+    freq_ += (targetFreq_ - freq_) * glideCoef_;   // portamento toward the target pitch
     float f = freq_ * pitchMod;
     osc_[0].SetFreq(f * (1.0f - detune));
     osc_[1].SetFreq(f * (1.0f + detune));
@@ -65,7 +69,8 @@ class SynthVoice {
  private:
   daisysp::Oscillator osc_[2], sub_;
   daisysp::AdEnv      fenv_;
-  float note_ = 0.f, freq_ = 220.f, vel_ = 0.8f;
+  float note_ = 0.f, freq_ = 220.f, targetFreq_ = 220.f, vel_ = 0.8f;
+  float glideCoef_ = 1.0f;
   bool  gate_ = false;
 };
 
@@ -75,6 +80,7 @@ class SynthMode : public IMode {
   static constexpr int kVoices = 6;   // max pool; active count is runtime (SP_VOICES)
 
   void Init(float sample_rate, Hothouse& /*hw*/) override {
+    sr_ = sample_rate;
     for (int i = 0; i < kVoices; ++i) v_[i].Init(sample_rate);
     lfo_.Init(sample_rate / params::audio::kBlockSize);  // LFO ticked once per block
   }
@@ -104,6 +110,10 @@ class SynthMode : public IMode {
     float fenvAmt = p.v[SP_FENV_AMT];
     spread_ = p.v[SP_SPREAD];
     voices_ = clampi(1 + static_cast<int>(p.v[SP_VOICES] * 5.0f + 0.5f), 1, kVoices);
+    // Glide: SP_GLIDE -> portamento time (0..0.4s). Per-sample one-pole coefficient
+    // toward the target pitch; ~0 time => coef 1 (instant).
+    float gtime = daisysp::fmap(p.v[SP_GLIDE], 0.0f, 0.4f, daisysp::Mapping::EXP);
+    float gcoef = (gtime <= 5e-4f) ? 1.0f : 1.0f - expf(-1.0f / (gtime * sr_));
 
     // ---- global LFO ----
     static const int lshapes[4] = {daisysp::Oscillator::WAVE_SIN,
@@ -121,6 +131,7 @@ class SynthMode : public IMode {
 
     for (int i = 0; i < kVoices; ++i) {
       v_[i].SetWave(wf);
+      v_[i].SetGlide(gcoef);
       v_[i].SetFenvDecay(fenvTime);
       v_[i].amp_.SetAttackTime(atk);
       v_[i].amp_.SetDecayTime(dec);
@@ -175,6 +186,7 @@ class SynthMode : public IMode {
   SynthVoice v_[kVoices];
   daisysp::Oscillator lfo_;
   float panL_[kVoices] = {0}, panR_[kVoices] = {0};
+  float sr_ = 48000.0f;
   float drive_ = 1.0f, spread_ = 0.6f, trem_ = 1.0f;
   int   voices_ = 4;
   int   steal_ = 0;
