@@ -63,7 +63,9 @@ src/
   config/params.h     ★ ALL tunable parameters (ranges, rates, sizes)
   modes/              synth_mode / granular_mode / generative_mode (one each)
   mod/modulation.h    random LFO / sample&hold / random walk / RNG
-  io/                 controls, midi_in, imu (I2C), sensors (analog ADC)
+  fx/effects.h        decoupled global FX: delay + reverb (Toggle 3)
+  io/                 controls, knobs (shift-layer soft-takeover), midi_in,
+                      imu (I2C, tier-2), sensors (analog ADC)
 lib/                  libDaisy + DaisySP (git submodules)
 scripts/              build / flash / build-libs / clean / monitor (.sh + .ps1)
 pd/                   Pure Data sketches for prototyping DSP ideas

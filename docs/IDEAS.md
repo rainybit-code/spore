@@ -43,9 +43,14 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 ## Modes & sound
 
 - ✅ **Synth** (USB MIDI), **Granular** (with freeze), **Generative/Krell** (self-play).
+- ✅ **Global FX block** — decoupled delay + reverb (`fx/effects.h`), selected by
+  Toggle 3, edited via the Footswitch-1 shift-layer (soft-takeover). Processes the
+  active mode's output.
+- 💡 **More FX / FX modes** — shimmer (pitch-shifted reverb), modulated/chorus delay,
+  ping-pong, per-mode FX presets, or a second FX slot (delay → reverb in series).
 - 💡 More modes are easy — implement `IMode` (`modes/mode.h`) and add to the array
-  in `main.cpp`. Candidates: reverb/shimmer, delay, drone/oscillator bank,
-  resonator, wavefolder, sample looper.
+  in `main.cpp`. Candidates: drone/oscillator bank, resonator, wavefolder,
+  sample looper.
 - 💡 **Mod routing matrix** — make source→destination→depth assignments data-driven
   (extend `config/params.h`) so any input (knob/sensor/LFO/wireless) can drive any
   parameter without code changes.
@@ -72,7 +77,8 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 ## Memory / boot layout — parked until flash gets tight
 
 Currently `APP_TYPE = BOOT_NONE`: the app runs from the **128 KB internal flash**
-(at ~82% today). Keep it this way until code actually outgrows 128 KB — no
+(~84% today — delay + reverb only cost ~2 KB of flash because ReverbSc's big
+buffer lives in SDRAM). Keep it this way until code actually outgrows 128 KB — no
 bootloader, simplest flashing. Note: **preset-save does NOT require leaving
 internal flash** (`PersistentStorage` keeps *data* in QSPI regardless of where
 code runs).

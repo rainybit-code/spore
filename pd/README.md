@@ -21,4 +21,11 @@ I2C IMU, multi-mode) lives in `../src`.
   toggle, and tweak the number boxes (pitch range/base, interval, Q). Needs vanilla
   Pd (no externals).
 
+- **`synth_reverb.pd`** — prototype of the synth voice (`../src/modes/synth_mode.h`)
+  into the global reverb FX (`../src/fx/effects.h`): saw `phasor~` → `lop~` (cutoff)
+  → AR `vline~` envelope → **`rev3~`** reverb with a wet/dry mix. Play a MIDI
+  controller (`notein`) or use the **TEST** toggle (set a test freq first), then dial
+  cutoff / reverb amount / liveness. `rev3~` is from Pd's bundled **extra** library
+  (included in plugdata and vanilla Pd).
+
 Drop new `.pd` files in this folder.

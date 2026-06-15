@@ -11,10 +11,11 @@
 //
 //  Control surface map (also documented in README.md):
 //    TOGGLE 1  : MODE select      (UP = Synth, MIDDLE = Granular, DOWN = Generative)
-//    TOGGLE 2  : per-mode variant A (e.g. waveform / grain-pitch mode / scale)
-//    TOGGLE 3  : per-mode variant B (e.g. mod routing preset)
+//    TOGGLE 2  : per-mode variant  (e.g. waveform / grain-pitch mode / scale)
+//    TOGGLE 3  : FX select         (UP = off, MIDDLE = delay, DOWN = reverb)
 //    KNOB 1..6 : per-mode macros   (see each `params::<mode>` block)
-//    FOOTSW 1  : engage / bypass
+//                ... or FX params while editing (hold FOOTSW 1) -- see `params::fx`
+//    FOOTSW 1  : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
 //    FOOTSW 2  : mode action       (Granular = freeze, Generative = re-seed)
 //    (hold BOTH footswitches 2s  -> reboot to DFU for flashing)
 // =============================================================================
