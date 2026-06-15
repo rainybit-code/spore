@@ -21,9 +21,12 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 
 // Drain pending MIDI events. Notes -> active mode; CC -> live knob values
 // (the WebMIDI management interface, Phase 1). See docs/MIDI_PROTOCOL.md.
-inline void PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift) {
+// Returns true if any event was processed (used to blink a MIDI-activity LED).
+inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift) {
+  bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
+    active = true;
     auto msg = midi.PopEvent();
     switch (msg.type) {
       case daisy::NoteOn: {
@@ -52,6 +55,7 @@ inline void PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         break;
     }
   }
+  return active;
 }
 
 }  // namespace synthbox

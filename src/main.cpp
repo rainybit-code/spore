@@ -47,6 +47,7 @@ IMode*          g_modes[MODE_COUNT];
 volatile int    g_active = MODE_SYNTH;
 bool            g_bypass = false;
 bool            g_fx_edit_latch = false;  // distinguishes FS1 tap vs hold-to-edit
+uint32_t        g_last_midi_ms = 0;       // for the onboard MIDI-activity LED
 
 Led led1, led2;
 
@@ -115,6 +116,11 @@ int main() {
   hw.SetAudioBlockSize(params::audio::kBlockSize);
   hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 
+  // Bring-up: light the onboard LED the instant the app boots, and start USB MIDI
+  // EARLY (before the heavier inits) so it enumerates even if something later misbehaves.
+  hw.seed.SetLed(true);
+  InitMidi(midi);
+
   const float sr = hw.AudioSampleRate();
   g_mod.Init(hw.AudioCallbackRate());
 
@@ -140,13 +146,18 @@ int main() {
   led1.Init(hw.seed.GetPin(Hothouse::LED_1), false);
   led2.Init(hw.seed.GetPin(Hothouse::LED_2), false);
 
-  InitMidi(midi);
-
   hw.StartAdc();
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    PumpMidi(midi, g_modes[g_active], g_shift);
+    if (PumpMidi(midi, g_modes[g_active], g_shift)) g_last_midi_ms = System::GetNow();
+    // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
+    {
+      uint32_t now = System::GetNow();
+      bool heartbeat = ((now / 500) % 2) == 0;
+      bool midi_active = (now - g_last_midi_ms) < 100;
+      hw.seed.SetLed(heartbeat || midi_active);
+    }
 
     // LED feedback: LED1 = engaged (lit) / bypassed (off), mid while editing FX;
     //               LED2 brightness indicates the active FX (off/delay/reverb).

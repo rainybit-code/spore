@@ -31,13 +31,21 @@ class GlobalFx {
   enum Mode { OFF = 0, DELAY = 1, REVERB = 2 };
 
   void Init(float sample_rate) {
+    // NOTE: all member state is set HERE (not via default member initializers),
+    // so GlobalFx has a trivial constructor and is safe to place in SDRAM
+    // (DSY_SDRAM_BSS) -- otherwise its constructor would run before main(), i.e.
+    // before SDRAM is initialized, and bus-fault on boot.
     sr_ = sample_rate;
+    mix_ = 0.3f;
+    fb_ = 0.0f;
+    tone_coef_ = 1.0f;
+    mode_ = OFF;
+    lp_l_ = lp_r_ = 0.0f;
     s_fx_del_l.Init();
     s_fx_del_r.Init();
     reverb_.Init(sample_rate);
     reverb_.SetFeedback(0.85f);
     reverb_.SetLpFreq(12000.0f);
-    lp_l_ = lp_r_ = 0.0f;
   }
 
   void SetMode(Mode m) { mode_ = m; }
@@ -99,13 +107,15 @@ class GlobalFx {
     return c < 0.0f ? 0.0f : (c > 1.0f ? 1.0f : c);
   }
 
+  // No default member initializers -> trivial construction -> SDRAM-safe.
+  // All of these are set in Init() (and SetMode/SetParams each block).
   daisysp::ReverbSc reverb_;
-  float sr_ = 48000.0f;
-  float mix_ = 0.3f;
-  float fb_ = 0.0f;
-  float tone_coef_ = 1.0f;
-  float lp_l_ = 0.0f, lp_r_ = 0.0f;
-  Mode  mode_ = OFF;
+  float sr_;
+  float mix_;
+  float fb_;
+  float tone_coef_;
+  float lp_l_, lp_r_;
+  Mode  mode_;
 };
 
 }  // namespace synthbox
