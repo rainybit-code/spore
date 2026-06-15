@@ -92,5 +92,6 @@ Flow:
 3. 🔜 **Presets** — QSPI save/recall on pedal + browser librarian.
 4. 🔜 **Sample upload** — chunked SysEx → QSPI + a sample-player source.
 
-The web tool lives in `tools/webmidi-editor/` (static; run via
-`python -m http.server` on localhost; deploy to GitHub Pages later).
+The web tool ("Propagator") lives in a **separate repo: `propagator-web`** (static;
+run via `python -m http.server` on localhost; deploy to GitHub Pages later). This
+file is the contract it builds against.

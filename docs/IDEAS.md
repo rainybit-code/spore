@@ -65,8 +65,9 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 
 - ✅ **Live param control over CC** — the pedal is a USB MIDI device; CC 20–31 drive
   the live knob values (soft-takeover). Built in firmware (`io/midi_in.h`).
-- 🔜 **WebMIDI editor** — static page in `tools/webmidi-editor/` (run on localhost,
-  GitHub Pages later) with sliders/dropdowns. Chromium only; SysEx needs https/localhost.
+- ◐ **WebMIDI editor ("Propagator")** — separate repo `propagator-web` (static,
+  localhost now / GitHub Pages later). v1 done: live CC control of the 6 mode + 6 FX
+  knobs, mode/FX toggles, tempo beat. Chromium only; SysEx needs https/localhost.
 - 🔜 **2-way sync (SysEx)** — device identify + full patch dump/load so the UI
   mirrors the pedal. Needs the central `Patch` store (see mod-matrix idea above).
 - 🔜 **Preset librarian** — patches saved in the browser (JSON/localStorage) **and**
