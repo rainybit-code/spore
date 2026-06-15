@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "make",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"],
+      "detail": "Compile the firmware -> build/daisy_synth.bin"
+    },
+    {
+      "label": "build + flash (DFU)",
+      "type": "shell",
+      "command": "make program-dfu",
+      "dependsOn": ["build"],
+      "problemMatcher": [],
+      "detail": "Flash over USB DFU. Put Daisy in bootloader first (BOOT+RESET)."
+    },
+    {
+      "label": "build libs",
+      "type": "shell",
+      "command": "make -C lib/libDaisy -j && make -C lib/DaisySP -j",
+      "problemMatcher": ["$gcc"],
+      "detail": "One-time build of libDaisy + DaisySP"
+    },
+    {
+      "label": "clean",
+      "type": "shell",
+      "command": "make clean",
+      "problemMatcher": [],
+      "detail": "Remove app build artifacts"
+    },
+    {
+      "label": "monitor (serial)",
+      "type": "shell",
+      "command": "pwsh -File scripts/monitor.ps1",
+      "problemMatcher": [],
+      "detail": "Open the Daisy USB serial log"
+    }
+  ]
+}

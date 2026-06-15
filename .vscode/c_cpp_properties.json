@@ -1,0 +1,21 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "Daisy (ARM)",
+      "includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/lib/libDaisy/src",
+        "${workspaceFolder}/lib/libDaisy/Drivers/CMSIS/Include",
+        "${workspaceFolder}/lib/libDaisy/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
+        "${workspaceFolder}/lib/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc",
+        "${workspaceFolder}/lib/DaisySP/Source"
+      ],
+      "defines": ["STM32H750xx", "CORE_CM7", "USE_HAL_DRIVER", "ARM_MATH_CM7"],
+      "compilerPath": "arm-none-eabi-gcc",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "gcc-arm"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# Portable toolchain (downloaded locally, ~1GB extracted; not committed)
+toolchain/
+
+# Build artifacts
+build/
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.d
+
+# Editor / OS
+.DS_Store
+*.swp
+
+# Keep .vscode config in the repo (tasks + intellisense), but ignore local junk
+.vscode/*.log
