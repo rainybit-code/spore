@@ -11,9 +11,9 @@ A multi-mode instrument for the [Electrosmith Daisy Seed](https://daisy.audio) i
 **non-standard inputs** (analog sensor on a free ADC pin, optional I2C motion IMU).
 
 > Status: firmware **builds clean** (arm-none-eabi-gcc 12.3.1) →
-> `build/daisy_synth.bin` (~108 KB). Not yet run on hardware (Daisy + Hothouse in
-> transit). A portable, no-admin toolchain is installed under `toolchain/` and the
-> build scripts use it automatically.
+> `build/daisy_synth.bin` (~110 KB, 84% of internal flash; `BOOT_NONE`). Not yet run
+> on hardware (Daisy + Hothouse in transit). A portable, no-admin toolchain is
+> installed under `toolchain/` and the build scripts use it automatically.
 
 ## Control surface
 
@@ -21,14 +21,20 @@ A multi-mode instrument for the [Electrosmith Daisy Seed](https://daisy.audio) i
 |--------------|----------|
 | **Toggle 1** | Mode: **UP** Synth · **MIDDLE** Granular · **DOWN** Generative *(use a 3-position switch)* |
 | **Toggle 2** | Per-mode variant (waveform / pitch-quantize / scale) |
+| **Toggle 3** | FX: **UP** off · **MIDDLE** delay · **DOWN** reverb |
 | **Knobs 1–6**| Per-mode macros — see [`src/config/params.h`](src/config/params.h) |
-| **Footsw 1** | Engage / bypass |
+| **Footsw 1** | **Tap** = engage/bypass · **Hold** = edit FX (knobs become FX controls) |
 | **Footsw 2** | Mode action — Granular **freeze**, Generative **re-seed** |
-| **LED 1 / 2**| Engaged state / active mode |
+| **LED 1 / 2**| Engaged state (mid = editing FX) / active FX |
 | Hold **both** footswitches 2s | Reboot to **DFU** for flashing |
 
 Audio: Hothouse stereo **in** and **out** (1/4" jacks). Synth & Generative ignore the
 input (they generate); Granular records and reuses it.
+
+**Global FX** is a decoupled delay + reverb block that processes whatever the active
+mode outputs (selected by Toggle 3). Hold Footswitch 1 to remap the 6 knobs to FX
+(mix / delay time / feedback / tone / reverb decay / damping) — **soft-takeover**
+means nothing jumps when you let go. See `src/fx/effects.h`.
 
 ## Getting started
 

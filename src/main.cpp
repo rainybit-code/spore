@@ -8,7 +8,9 @@
 //
 //  CONTROL SURFACE (see config/params.h for the full per-mode map):
 //    TOGGLE 1 : MODE  (UP=Synth  MIDDLE=Granular  DOWN=Generative)  [3-pos switch]
-//    FOOTSW 1 : engage / bypass        FOOTSW 2 : mode action (freeze / re-seed)
+//    TOGGLE 3 : FX    (UP=off    MIDDLE=delay      DOWN=reverb)
+//    FOOTSW 1 : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
+//    FOOTSW 2 : mode action (freeze / re-seed)
 //    Hold BOTH footswitches 2s -> reboot to DFU for flashing.
 // =============================================================================
 #include "daisy_seed.h"
@@ -18,7 +20,9 @@
 #include "mod/modulation.h"
 #include "io/controls.h"
 #include "io/sensors.h"
+#include "io/knobs.h"
 #include "io/midi_in.h"
+#include "fx/effects.h"
 #include "modes/mode.h"
 #include "modes/synth_mode.h"
 #include "modes/granular_mode.h"
@@ -32,6 +36,8 @@ Hothouse        hw;
 MidiUsbHandler  midi;
 ModEngine       g_mod;
 AnalogSensors   g_sensors;
+ShiftKnobs      g_shift;
+GlobalFx        DSY_SDRAM_BSS g_fx;  // ReverbSc ~400KB -> must live in SDRAM
 
 SynthMode       synth_mode;
 GranularMode    granular_mode;
@@ -40,6 +46,7 @@ IMode*          g_modes[MODE_COUNT];
 
 volatile int    g_active = MODE_SYNTH;
 bool            g_bypass = false;
+bool            g_fx_edit_latch = false;  // distinguishes FS1 tap vs hold-to-edit
 
 Led led1, led2;
 
@@ -56,12 +63,34 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     g_modes[g_active]->OnEnter();
   }
 
-  // Footswitches: 1 = bypass toggle, 2 = mode-specific action.
-  if (Footswitch1Pressed(hw)) g_bypass = !g_bypass;
+  // FX select from TOGGLE 3 (0=off, 1=delay, 2=reverb).
+  g_fx.SetMode(static_cast<GlobalFx::Mode>(TogglePos(hw, Hothouse::TOGGLESWITCH_3)));
+
+  // FOOTSWITCH 1: hold = edit FX (knobs -> FX layer); quick tap = bypass toggle.
+  bool fx_editing = hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
+                    hw.switches[Hothouse::FOOTSWITCH_1].TimeHeldMs() >
+                        params::fx::kEditHoldMs;
+  if (fx_editing) g_fx_edit_latch = true;
+  if (hw.switches[Hothouse::FOOTSWITCH_1].FallingEdge()) {
+    if (!g_fx_edit_latch) g_bypass = !g_bypass;  // it was a tap
+    g_fx_edit_latch = false;
+  }
+
+  // FOOTSWITCH 2: mode-specific action.
   if (Footswitch2Pressed(hw)) g_modes[g_active]->Action();
 
+  // Shift-layer: route knobs to FX while editing, to the mode otherwise.
+  g_shift.SetLayer(fx_editing ? ShiftKnobs::FX : ShiftKnobs::MODE);
+  g_shift.Update(hw);
+
+  // FX params from the (latched) FX layer.
+  const float* fk = g_shift.Values(ShiftKnobs::FX);
+  g_fx.SetParams(fk[Hothouse::KNOB_1], fk[Hothouse::KNOB_2], fk[Hothouse::KNOB_3],
+                 fk[Hothouse::KNOB_4], fk[Hothouse::KNOB_5], fk[Hothouse::KNOB_6]);
+
+  // Mode params from the (latched) MODE layer.
   IMode*     m = g_modes[g_active];
-  ModContext ctx{g_mod, g_sensors};
+  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE)};
   m->Control(hw, ctx);
 
   if (g_bypass) {
@@ -71,8 +100,9 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     }
   } else {
     m->ProcessBlock(in, out, size);
-    // Global safety limiter: hard-clamp to [-1, 1] so a resonant filter or
-    // stacked grains can never blast the output. (Modes aim well below this.)
+    g_fx.Process(out[0], out[1], size);  // decoupled global FX on the active mode
+    // Global safety limiter: hard-clamp to [-1, 1] so a resonant filter, stacked
+    // grains, or runaway delay feedback can never blast the output.
     for (size_t i = 0; i < size; ++i) {
       out[0][i] = out[0][i] > 1.0f ? 1.0f : (out[0][i] < -1.0f ? -1.0f : out[0][i]);
       out[1][i] = out[1][i] > 1.0f ? 1.0f : (out[1][i] < -1.0f ? -1.0f : out[1][i]);
@@ -95,6 +125,13 @@ int main() {
   g_modes[MODE_GRANULAR]   = &granular_mode;
   g_modes[MODE_GENERATIVE] = &generative_mode;
 
+  // Global FX (in SDRAM) + shift-layer with sensible FX starting points:
+  //   mix .30 | time .40 | feedback .35 | tone .70 | rev decay .60 | rev damp .70
+  g_fx.Init(sr);
+  const float fx_defaults[ShiftKnobs::kKnobs] = {0.30f, 0.40f, 0.35f,
+                                                 0.70f, 0.60f, 0.70f};
+  g_shift.Init(fx_defaults);
+
   // Non-standard input: analog sensor on a free ADC pin.
   // (Motion IMU is tier-2 / deferred -- see io/imu.h.)
   g_sensors.Init(hw);       // re-inits ADC to add analog input on A0/D15
@@ -111,10 +148,10 @@ int main() {
   while (true) {
     PumpMidi(midi, g_modes[g_active]);
 
-    // LED feedback: LED1 = engaged (lit) / bypassed (off);
-    //               LED2 brightness indicates the active mode.
-    led1.Set(g_bypass ? 0.0f : 1.0f);
-    led2.Set(0.2f + 0.4f * static_cast<float>(g_active));
+    // LED feedback: LED1 = engaged (lit) / bypassed (off), mid while editing FX;
+    //               LED2 brightness indicates the active FX (off/delay/reverb).
+    led1.Set(g_fx_edit_latch ? 0.5f : (g_bypass ? 0.0f : 1.0f));
+    led2.Set(0.15f * static_cast<float>(g_fx.GetMode()) * 2.0f);
     led1.Update();
     led2.Update();
 

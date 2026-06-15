@@ -21,6 +21,9 @@ using clevelandmusicco::Hothouse;
 struct ModContext {
   ModEngine&     mod;      // random LFOs / S&H / RNG
   AnalogSensors& sensors;  // analog sensor input (neutral until wired)
+  const float*   knob;     // 6 latched MODE-layer knob values (0..1), see io/knobs.h
+                           // -- use instead of hw.GetKnobValue so the FX shift-layer
+                           //    doesn't disturb mode params. Index with KNOB_1..KNOB_6.
 };
 
 class IMode {

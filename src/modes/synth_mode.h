@@ -16,7 +16,7 @@ namespace synthbox {
 
 class SynthMode : public IMode {
  public:
-  void Init(float sample_rate, Hothouse& hw) override {
+  void Init(float sample_rate, Hothouse& /*hw*/) override {
     osc_.Init(sample_rate);
     osc_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
     flt_.Init(sample_rate);
@@ -25,30 +25,28 @@ class SynthMode : public IMode {
     env_.SetTime(daisysp::ADENV_SEG_DECAY, 0.4f);
     env_.SetMin(0.0f);
     env_.SetMax(1.0f);
-
-    using namespace params::synth;
-    p_cutoff_.Init(hw.knobs[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz,
-                   daisy::Parameter::LOGARITHMIC);
-    p_res_.Init(hw.knobs[Hothouse::KNOB_2], kResMin, kResMax,
-                daisy::Parameter::LINEAR);
-    p_attack_.Init(hw.knobs[Hothouse::KNOB_3], kAttackMinS, kAttackMaxS,
-                   daisy::Parameter::LOGARITHMIC);
-    p_decay_.Init(hw.knobs[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS,
-                  daisy::Parameter::LOGARITHMIC);
   }
 
   void Control(Hothouse& hw, ModContext& ctx) override {
+    using namespace params::synth;
     static const int waves[3] = {daisysp::Oscillator::WAVE_SIN,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SQUARE,
                                  daisysp::Oscillator::WAVE_POLYBLEP_SAW};
     osc_.SetWaveform(waves[TogglePos(hw, Hothouse::TOGGLESWITCH_2)]);
 
-    env_.SetTime(daisysp::ADENV_SEG_ATTACK, p_attack_.Process());
-    env_.SetTime(daisysp::ADENV_SEG_DECAY, p_decay_.Process());
-    flt_.SetRes(p_res_.Process());
+    // Knobs come from the shift-layer (latched), not raw hardware.
+    env_.SetTime(daisysp::ADENV_SEG_ATTACK,
+                 daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS,
+                               kAttackMaxS, daisysp::Mapping::EXP));
+    env_.SetTime(daisysp::ADENV_SEG_DECAY,
+                 daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS,
+                               daisysp::Mapping::EXP));
+    flt_.SetRes(daisysp::fmap(ctx.knob[Hothouse::KNOB_2], kResMin, kResMax,
+                              daisysp::Mapping::LINEAR));
 
-    float base = p_cutoff_.Process();
-    float depth = hw.GetKnobValue(Hothouse::KNOB_5) * params::synth::kModDepthMax;
+    float base = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz,
+                               kCutoffMaxHz, daisysp::Mapping::EXP);
+    float depth = ctx.knob[Hothouse::KNOB_5] * kModDepthMax;
     // Random-LFO sweep + a gentle nudge from the analog sensor (neutral when
     // unwired -- 0.5 maps to no bias).
     float lfo = ctx.mod.Lfo1();
@@ -81,7 +79,6 @@ class SynthMode : public IMode {
   daisysp::Oscillator osc_;
   daisysp::MoogLadder flt_;
   daisysp::AdEnv      env_;
-  daisy::Parameter  p_cutoff_, p_res_, p_attack_, p_decay_;
   float cutoff_ = 1000.0f;
   float amp_ = 0.8f;
   bool  note_active_ = false;

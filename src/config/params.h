@@ -112,4 +112,26 @@ namespace sensors {
 constexpr float kAnalogDepth   = 1.0f;      // analog sensor -> destination scale
 }  // namespace sensors
 
+// ----------------------------------------------------------------------------
+//  Global FX block        (decoupled delay + reverb, processes the active mode)
+//    TOGGLE 3 selects: UP = off / MIDDLE = delay / DOWN = reverb.
+//    Hold FOOTSWITCH 1 to edit (knobs become FX controls, soft-takeover):
+//      KNOB 1 mix   KNOB 2 delay time   KNOB 3 delay feedback
+//      KNOB 4 delay tone   KNOB 5 reverb decay   KNOB 6 reverb damping
+// ----------------------------------------------------------------------------
+namespace fx {
+constexpr float kDelayBufSeconds = 2.0f;    // SDRAM delay buffer length per ch
+constexpr float kDelayMinMs    = 20.0f;
+constexpr float kDelayMaxMs    = 1500.0f;
+constexpr float kDelayFbMax    = 0.85f;     // feedback (keep < 1 to decay)
+constexpr float kDelayToneMinHz = 600.0f;   // feedback-path lowpass
+constexpr float kDelayToneMaxHz = 12000.0f;
+constexpr float kRevDecayMin   = 0.60f;     // ReverbSc feedback (tail length)
+constexpr float kRevDecayMax   = 0.98f;
+constexpr float kRevDampMinHz  = 800.0f;    // ReverbSc LP (HF damping)
+constexpr float kRevDampMaxHz  = 18000.0f;
+constexpr float kEditHoldMs    = 350.0f;    // footswitch hold time to enter edit
+constexpr float kPickupBand    = 0.03f;     // soft-takeover catch window (0..1)
+}  // namespace fx
+
 }  // namespace params

@@ -41,12 +41,12 @@ class GenerativeMode : public IMode {
     using namespace params::generative;
     const float dt = 1.0f / hw.AudioCallbackRate();
 
-    const float k_rate = hw.GetKnobValue(Hothouse::KNOB_1);
-    const float k_range = hw.GetKnobValue(Hothouse::KNOB_2);
-    const float k_tone = hw.GetKnobValue(Hothouse::KNOB_3);
-    const float k_decay = hw.GetKnobValue(Hothouse::KNOB_4);
-    const float k_rand = hw.GetKnobValue(Hothouse::KNOB_5);
-    const float k_modwet = hw.GetKnobValue(Hothouse::KNOB_6);
+    const float k_rate = ctx.knob[Hothouse::KNOB_1];
+    const float k_range = ctx.knob[Hothouse::KNOB_2];
+    const float k_tone = ctx.knob[Hothouse::KNOB_3];
+    const float k_decay = ctx.knob[Hothouse::KNOB_4];
+    const float k_rand = ctx.knob[Hothouse::KNOB_5];
+    const float k_modwet = ctx.knob[Hothouse::KNOB_6];
 
     const float rate = kRateMinHz + k_rate * (kRateMaxHz - kRateMinHz);
     const float range = kNoteRangeMin + k_range * (kNoteRangeMax - kNoteRangeMin);

@@ -46,12 +46,12 @@ class GranularMode : public IMode {
     using namespace params::granular;
     quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
 
-    float k_size = hw.GetKnobValue(Hothouse::KNOB_1);
-    float k_dens = hw.GetKnobValue(Hothouse::KNOB_2);
-    float k_pitch = hw.GetKnobValue(Hothouse::KNOB_3);
-    float k_spread = hw.GetKnobValue(Hothouse::KNOB_4);
-    float k_scatter = hw.GetKnobValue(Hothouse::KNOB_5);
-    float k_mix = hw.GetKnobValue(Hothouse::KNOB_6);
+    float k_size = ctx.knob[Hothouse::KNOB_1];
+    float k_dens = ctx.knob[Hothouse::KNOB_2];
+    float k_pitch = ctx.knob[Hothouse::KNOB_3];
+    float k_spread = ctx.knob[Hothouse::KNOB_4];
+    float k_scatter = ctx.knob[Hothouse::KNOB_5];
+    float k_mix = ctx.knob[Hothouse::KNOB_6];
 
     grain_len_ = (kGrainSizeMinMs + k_size * (kGrainSizeMaxMs - kGrainSizeMinMs)) *
                  0.001f * sr_;
