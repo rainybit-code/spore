@@ -59,6 +59,28 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 - 💡 **Generative v2** — Euclidean rhythm engine, probabilistic gates, multiple
   voices, chord/scale-aware walks, tempo from tap or MIDI clock.
 
+## Connectivity & management (USB MIDI ↔ browser)
+
+Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
+
+- ✅ **Live param control over CC** — the pedal is a USB MIDI device; CC 20–31 drive
+  the live knob values (soft-takeover). Built in firmware (`io/midi_in.h`).
+- 🔜 **WebMIDI editor** — static page in `tools/webmidi-editor/` (run on localhost,
+  GitHub Pages later) with sliders/dropdowns. Chromium only; SysEx needs https/localhost.
+- 🔜 **2-way sync (SysEx)** — device identify + full patch dump/load so the UI
+  mirrors the pedal. Needs the central `Patch` store (see mod-matrix idea above).
+- 🔜 **Preset librarian** — patches saved in the browser (JSON/localStorage) **and**
+  on the pedal in **QSPI** (`PersistentStorage`) so they survive power-off.
+- 🅲 **Sample loading** — upload an audio sample over chunked SysEx into **QSPI**
+  (8 MB), read back memory-mapped, played by a sample-player source (feeds granular
+  or a new mode). Biggest piece; the real driver for using QSPI as data storage
+  (note: data in QSPI does NOT require `BOOT_QSPI` — code can stay in internal flash).
+- 💡 **protobuf for the protocol** — instead of hand-rolled SysEx byte layouts, define
+  messages in `.proto` and codegen both ends (**nanopb** on firmware, **protobuf.js**
+  in the browser); frame the encoded bytes in SysEx (7→8-bit). Schema-driven, versioned,
+  less manual parsing. Parked — adds a dependency + codegen step; revisit once the
+  message set stabilizes.
+
 ## Workflow & quality of life
 
 - ✅ Centralized tunables in `config/params.h`; build/flash scripts; VS Code tasks.

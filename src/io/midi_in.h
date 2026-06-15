@@ -7,6 +7,8 @@
 #pragma once
 
 #include "daisy_seed.h"
+#include "config/params.h"
+#include "io/knobs.h"
 #include "modes/mode.h"
 
 namespace synthbox {
@@ -17,8 +19,9 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
   midi.Init(cfg);
 }
 
-// Drain pending MIDI events into the active mode. Call from the main loop.
-inline void PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode) {
+// Drain pending MIDI events. Notes -> active mode; CC -> live knob values
+// (the WebMIDI management interface, Phase 1). See docs/MIDI_PROTOCOL.md.
+inline void PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift) {
   midi.Listen();
   while (midi.HasEvents()) {
     auto msg = midi.PopEvent();
@@ -33,6 +36,17 @@ inline void PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode) {
       case daisy::NoteOff: {
         auto m = msg.AsNoteOff();
         mode->NoteOff(static_cast<float>(m.note));
+      } break;
+      case daisy::ControlChange: {
+        auto  cc = msg.AsControlChange();
+        int   n = cc.control_number;
+        float v = cc.value / 127.0f;
+        if (n >= params::midi::kCcModeKnobBase &&
+            n < params::midi::kCcModeKnobBase + ShiftKnobs::kKnobs)
+          shift.SetValue(ShiftKnobs::MODE, n - params::midi::kCcModeKnobBase, v);
+        else if (n >= params::midi::kCcFxKnobBase &&
+                 n < params::midi::kCcFxKnobBase + ShiftKnobs::kKnobs)
+          shift.SetValue(ShiftKnobs::FX, n - params::midi::kCcFxKnobBase, v);
       } break;
       default:
         break;

@@ -58,6 +58,14 @@ class ShiftKnobs {
   float Value(Layer layer, int knob) const { return val_[layer][knob]; }
   const float* Values(Layer layer) const { return val_[layer]; }
 
+  // Remote (MIDI/web) set: write a value and LOCK it, so the physical knob has
+  // to be moved to its position before it takes back over (motorized-fader feel).
+  void SetValue(Layer layer, int knob, float v01) {
+    if (knob < 0 || knob >= kKnobs) return;
+    val_[layer][knob] = v01 < 0.0f ? 0.0f : (v01 > 1.0f ? 1.0f : v01);
+    locked_[layer][knob] = true;
+  }
+
  private:
   float val_[2][kKnobs];
   bool  locked_[2][kKnobs];

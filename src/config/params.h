@@ -135,4 +135,14 @@ constexpr float kEditHoldMs    = 350.0f;    // footswitch hold time to enter edi
 constexpr float kPickupBand    = 0.03f;     // soft-takeover catch window (0..1)
 }  // namespace fx
 
+// ----------------------------------------------------------------------------
+//  MIDI management interface   (USB MIDI <-> browser WebMIDI tool)
+//    See docs/MIDI_PROTOCOL.md for the full contract (CC map + SysEx).
+//    Phase 1 (implemented): CC drives the live knob values as "virtual knobs".
+// ----------------------------------------------------------------------------
+namespace midi {
+constexpr int kCcModeKnobBase = 20;  // CC 20..25 -> MODE-layer knobs 1..6
+constexpr int kCcFxKnobBase   = 26;  // CC 26..31 -> FX-layer knobs 1..6
+}  // namespace midi
+
 }  // namespace params

@@ -146,7 +146,7 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    PumpMidi(midi, g_modes[g_active]);
+    PumpMidi(midi, g_modes[g_active], g_shift);
 
     // LED feedback: LED1 = engaged (lit) / bypassed (off), mid while editing FX;
     //               LED2 brightness indicates the active FX (off/delay/reverb).
