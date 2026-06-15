@@ -56,11 +56,13 @@ class SynthMode : public IMode {
 
   void ProcessBlock(AudioHandle::InputBuffer /*in*/,
                     AudioHandle::OutputBuffer out, size_t size) override {
+    // Velocity opens the filter (harder = brighter) on top of driving amplitude.
+    float vel_bright = 0.35f + 0.65f * amp_;
     for (size_t i = 0; i < size; ++i) {
       float env_out = env_.Process();
       if (!env_.IsRunning()) note_active_ = false;
-      float fc = daisysp::fclamp(cutoff_ * (0.15f + 0.85f * env_out), 20.0f,
-                                 18000.0f);
+      float fc = daisysp::fclamp(cutoff_ * vel_bright * (0.15f + 0.85f * env_out),
+                                 20.0f, 18000.0f);
       flt_.SetFreq(fc);
       float s = flt_.Process(osc_.Process()) * env_out * amp_;
       out[0][i] = out[1][i] = s;
