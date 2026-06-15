@@ -43,10 +43,13 @@ class SynthMode : public IMode {
     using namespace params::synth;
     const SynthParams& p = g_synthParams;
 
-    static const int waves[3] = {daisysp::Oscillator::WAVE_SIN,
-                                 daisysp::Oscillator::WAVE_POLYBLEP_SQUARE,
-                                 daisysp::Oscillator::WAVE_POLYBLEP_SAW};
-    int wf = waves[TogglePos(hw, Hothouse::TOGGLESWITCH_2)];
+    // Waveform from the synth panel (SP_WAVE). Sin / Tri / Saw / Sqr.
+    static const int waves[4] = {daisysp::Oscillator::WAVE_SIN,
+                                 daisysp::Oscillator::WAVE_POLYBLEP_TRI,
+                                 daisysp::Oscillator::WAVE_POLYBLEP_SAW,
+                                 daisysp::Oscillator::WAVE_POLYBLEP_SQUARE};
+    int wi = static_cast<int>(p.v[SP_WAVE] * 3.99f);
+    int wf = waves[wi < 0 ? 0 : (wi > 3 ? 3 : wi)];
     for (int i = 0; i < 3; ++i) osc_[i].SetWaveform(wf);
 
     cutoff_ = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz,
