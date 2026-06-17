@@ -86,38 +86,55 @@ class SynthMode : public IMode {
                                    daisysp::Oscillator::WAVE_TRI,
                                    daisysp::Oscillator::WAVE_SAW,
                                    daisysp::Oscillator::WAVE_SQUARE};
+    // LFO1 + LFO2 are pure matrix sources now (route them via the patchbay).
+    // Their rate can itself be a destination (modulated by last block's mod).
     lfo_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO_SHAPE] * 3.99f), 0, 3)]);
-    lfo_.SetFreq(daisysp::fmap(p.v[SP_LFO_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP));
+    lfo_.SetFreq(daisysp::fmap(p.v[SP_LFO_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP) *
+                 daisysp::fclamp(1.0f + rateMod1_ * 1.5f, 0.05f, 8.0f));
     float lfo = lfo_.Process();
-    float depth = daisysp::fclamp(p.v[SP_LFO_DEPTH] + lfoKnob, 0.0f, 1.0f);
-    int dest = clampi(static_cast<int>(p.v[SP_LFO_DEST] * 3.99f), 0, 3);  // off/vibrato/filter/tremolo
-    float pitchMul = (dest == 1) ? (1.0f + lfo * depth * 0.06f) : 1.0f;
-    float cutMul   = (dest == 2) ? (1.0f + lfo * depth * 0.9f) : 1.0f;
-    trem_          = (dest == 3) ? (1.0f - depth * 0.5f * (0.5f - 0.5f * lfo)) : 1.0f;
+    float depth1 = daisysp::fclamp(p.v[SP_LFO_DEPTH] + lfoKnob, 0.0f, 1.0f);   // LFO1 master depth
 
-    // ---- LFO2 ----
     lfo2_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO2_SHAPE] * 3.99f), 0, 3)]);
-    lfo2_.SetFreq(daisysp::fmap(p.v[SP_LFO2_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP));
+    lfo2_.SetFreq(daisysp::fmap(p.v[SP_LFO2_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP) *
+                  daisysp::fclamp(1.0f + rateMod2_ * 1.5f, 0.05f, 8.0f));
     float lfo2 = lfo2_.Process();
 
-    // ---- mod matrix: global sources -> destination offsets (applied to all voices) ----
-    float src[5] = {0.0f, lfo, lfo2, ctx.mod.Lfo1(), ctx.sensors.Light() * 2.0f - 1.0f};
-    float mod[7] = {0, 0, 0, 0, 0, 0, 0};   // cutoff/pitch/scan/drive/sub/fm/amp
+    // ---- mod matrix ----
+    // sources: 1 LFO1  2 LFO2  3 Rnd  4 Sensor  (global)  ·  5 Velocity  6 Key (per-voice)
+    // dests:   0 cutoff 1 pitch 2 scan 3 drive 4 sub 5 fm 6 amp 7 LFO1-rate 8 LFO2-rate
+    float src[5] = {0.0f, lfo * depth1, lfo2 * p.v[SP_LFO2_DEPTH],
+                    ctx.mod.Lfo1(), ctx.sensors.Light() * 2.0f - 1.0f};
+    float mod[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};   // global modulation (all voices)
     const int kSrc[6] = {SP_M1_SRC, SP_M2_SRC, SP_M3_SRC, SP_M4_SRC, SP_M5_SRC, SP_M6_SRC};
     const int kDst[6] = {SP_M1_DST, SP_M2_DST, SP_M3_DST, SP_M4_DST, SP_M5_DST, SP_M6_DST};
     const int kAmt[6] = {SP_M1_AMT, SP_M2_AMT, SP_M3_AMT, SP_M4_AMT, SP_M5_AMT, SP_M6_AMT};
+    int   nPV = 0; int pvSrc[6], pvDst[6]; float pvAmt[6];   // per-voice slots (Velocity / Key)
     for (int s = 0; s < 6; ++s) {
-      int si = clampi(static_cast<int>(p.v[kSrc[s]] * 4.99f), 0, 4);
+      int si = clampi(static_cast<int>(p.v[kSrc[s]] * 6.99f), 0, 6);
       if (si == 0) continue;   // Off
-      int di = clampi(static_cast<int>(p.v[kDst[s]] * 6.99f), 0, 6);
-      mod[di] += src[si] * (p.v[kAmt[s]] - 0.5f) * 2.0f;
+      int di = clampi(static_cast<int>(p.v[kDst[s]] * 8.99f), 0, 8);
+      float amt = (p.v[kAmt[s]] - 0.5f) * 2.0f;
+      if (si <= 4) { mod[di] += src[si] * amt; }                  // global source
+      else if (di <= 5) { pvSrc[nPV] = si; pvDst[nPV] = di; pvAmt[nPV] = amt; ++nPV; }  // per-voice -> cutoff..fm
     }
-    cutMul   *= (1.0f + mod[0] * 0.9f);
-    pitchMul *= (1.0f + mod[1] * 0.06f);
-    trem_    *= daisysp::fclamp(1.0f + mod[6] * 0.5f, 0.0f, 1.5f);
+    float cutMul   = 1.0f + mod[0] * 0.9f;
+    float pitchMul = 1.0f + mod[1] * 0.06f;
+    trem_          = daisysp::fclamp(1.0f + mod[6] * 0.5f, 0.0f, 1.5f);
     float scanMod = mod[2] * 0.5f, driveMod = mod[3] * 0.5f, subMod = mod[4] * 0.5f, fmMod = mod[5] * 0.5f;
+    rateMod1_ = mod[7];   // feeds next block's LFO rates
+    rateMod2_ = mod[8];
 
     for (int i = 0; i < kVoices; ++i) {
+      // per-voice modulation (Velocity / Key sources -> cutoff..fm)
+      float vc = 0, vp = 0, vs = 0, vd = 0, vsub = 0, vf = 0;
+      for (int k = 0; k < nPV; ++k) {
+        float sv = (pvSrc[k] == 5) ? v_[i].Vel() : (v_[i].Note() - 60.0f) / 24.0f;  // 5=vel, 6=key
+        float a = sv * pvAmt[k];
+        switch (pvDst[k]) {
+          case 0: vc += a; break; case 1: vp += a; break; case 2: vs += a; break;
+          case 3: vd += a; break; case 4: vsub += a; break; case 5: vf += a; break;
+        }
+      }
       v_[i].SetWave(wf);
       v_[i].SetGlide(gcoef);
       v_[i].SetFenvDecay(fenvTime);
@@ -126,19 +143,19 @@ class SynthMode : public IMode {
       v_[i].amp_.SetSustainLevel(sus);
       v_[i].amp_.SetReleaseTime(rel);
       v_[i].res = res;
-      v_[i].drive = clamp01(drive + driveMod);
+      v_[i].drive = clamp01(drive + driveMod + vd * 0.5f);
       v_[i].filterType = filterType;
       v_[i].uni = uni;
       v_[i].subOct = subOct;
       v_[i].SetSubWave(subWave);
-      v_[i].cutoff = cutoff * cutMul;
+      v_[i].cutoff = cutoff * cutMul * (1.0f + vc * 0.9f);
       v_[i].detune = detune;
-      v_[i].subLvl = clamp01(subLvl + subMod);
+      v_[i].subLvl = clamp01(subLvl + subMod + vsub * 0.5f);
       v_[i].fenvAmt = fenvAmt;
-      v_[i].pitchMod = pitchMul;
+      v_[i].pitchMod = pitchMul * (1.0f + vp * 0.06f);
       v_[i].engine = engine;
-      v_[i].wtPos = clamp01(wtPos + scanMod);
-      v_[i].fmAmt = clamp01(fmAmt + fmMod);
+      v_[i].wtPos = clamp01(wtPos + scanMod + vs * 0.5f);
+      v_[i].fmAmt = clamp01(fmAmt + fmMod + vf * 0.5f);
       v_[i].fmRatio = fmRatio;
       v_[i].fold = fold;
       v_[i].wtBank = wtBank;
@@ -188,6 +205,7 @@ class SynthMode : public IMode {
   float panL_[kVoices] = {0}, panR_[kVoices] = {0};
   float sr_ = 48000.0f;
   float drive_ = 1.0f, spread_ = 0.6f, trem_ = 1.0f;
+  float rateMod1_ = 0.0f, rateMod2_ = 0.0f;   // LFO-rate modulation carried to next block
   int   voices_ = 4;
   int   steal_ = 0;
 };

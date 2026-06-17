@@ -123,6 +123,7 @@ class Voice {
   bool Active() const { return gate_ || amp_.IsRunning(); }
   bool Gate() const { return gate_; }
   float Note() const { return note_; }
+  float Vel() const { return vel_; }
 
   // per-block params set by the mode
   float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f, pitchMod = 1.f;

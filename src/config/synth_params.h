@@ -46,6 +46,7 @@ enum SynthParam {
   SP_M4_SRC, SP_M4_DST, SP_M4_AMT,   // slot 4
   SP_M5_SRC, SP_M5_DST, SP_M5_AMT,   // slot 5
   SP_M6_SRC, SP_M6_DST, SP_M6_AMT,   // slot 6 (patchbay = up to 6 cables)
+  SP_LFO2_DEPTH,                     // master depth for LFO2 as a matrix source
   SP_COUNT,
 };
 
@@ -60,7 +61,8 @@ struct SynthParams {
                        0.00f, 0.00f, 0.50f,
                        0.00f, 0.00f, 0.50f,
                        0.00f, 0.00f, 0.50f,
-                       0.00f, 0.00f, 0.50f};
+                       0.00f, 0.00f, 0.50f,
+                       1.00f};
 };
 
 extern SynthParams g_synthParams;  // defined in main.cpp
