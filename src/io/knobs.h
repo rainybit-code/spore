@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  knobs.h  --  shift-layer knob manager with soft-takeover ("pickup").
 // =============================================================================

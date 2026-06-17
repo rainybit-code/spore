@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  generative_mode.h  --  MODE 3: self-playing AMBIENT landscape.
 // =============================================================================

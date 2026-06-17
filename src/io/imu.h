@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  imu.h  --  motion / IMU input over I2C   *** TIER 2 -- NOT IN THE BUILD ***
 // =============================================================================

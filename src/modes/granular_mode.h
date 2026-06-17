@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  granular_mode.h  --  MODE 2: granular texture from the BUILT-IN audio input.
 // =============================================================================

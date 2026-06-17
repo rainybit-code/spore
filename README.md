@@ -1,19 +1,24 @@
-# Daisy Seed + Hothouse — Versatile Generative Synth / FX
+# 🌱 Spore — Versatile Generative Synth / FX Pedal
 
-A multi-mode instrument for the [Electrosmith Daisy Seed](https://daisy.audio) in a
-[Cleveland Music Co. Hothouse](https://clevelandmusicco.com) pedal:
+**Spore** is firmware that turns an [Electrosmith Daisy Seed](https://daisy.audio) in a
+[Cleveland Music Co. Hothouse](https://clevelandmusicco.com) enclosure into a multi-mode
+instrument:
 
-- **Synth** — playable voice over **USB MIDI** (osc → Moog filter → envelope)
+- **Synth** — playable voice over **USB MIDI** (analog/wavetable osc → filter → envelope)
 - **Granular** — granular texture from the **built-in audio input**, with **freeze**
 - **Generative** — self-playing "Krell" voice (random-walk pitch, evolving envelopes)
 
-…plus a shared **random modulation engine** (hardware-RNG LFOs / sample & hold) and
-**non-standard inputs** (analog sensor on a free ADC pin, optional I2C motion IMU).
+…plus a shared **modulation engine** (hardware-RNG LFOs / sample & hold / 6-slot mod
+matrix), a **tempo-synced** delay + clock, and **non-standard inputs** (analog sensor on
+a free ADC pin, optional I2C motion IMU).
 
-> Status: firmware **builds clean** (arm-none-eabi-gcc 12.3.1) →
-> `build/daisy_synth.bin` (~110 KB, 84% of internal flash; `BOOT_NONE`). Not yet run
-> on hardware (Daisy + Hothouse in transit). A portable, no-admin toolchain is
-> installed under `toolchain/` and the build scripts use it automatically.
+Configure it live from its companion browser editor, **Propagator** (separate repo —
+WebMIDI, no install). See [`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx
+contract the two share.
+
+> **Status:** experimental / work-in-progress. Builds clean with arm-none-eabi-gcc
+> 12.3.1 → `build/daisy_synth.bin`. Treat hardware behaviour as unverified until you've
+> flashed and tested on your own unit.
 
 ## Control surface
 
@@ -38,15 +43,19 @@ means nothing jumps when you let go. See `src/fx/effects.h`.
 
 ## Getting started
 
-1. **Toolchain** — a portable ARM GCC + `make` is already installed under
-   `toolchain/` (no admin needed); `scripts/env.*` puts it on PATH automatically.
-   To recreate on another machine, either re-download the xPack ARM GCC +
-   windows-build-tools into `toolchain/`, or install the official Daisy toolchain
-   (<https://daisy.audio/tutorials/cpp-dev-env/>). For flashing you'll also want
-   `dfu-util` (not required to build). Install VS Code for the tasks/IntelliSense.
-2. **Libraries** (already wired as submodules under `lib/`, and already built):
+```sh
+git clone --recurse-submodules <repo-url>    # pulls libDaisy + DaisySP too
+```
+
+1. **Toolchain** — install ARM GCC + `make` + `dfu-util`. Easiest is the official
+   [Daisy toolchain](https://daisy.audio/tutorials/cpp-dev-env/); on Windows you can
+   instead drop a portable xPack ARM GCC + windows-build-tools into a local
+   `toolchain/` folder (gitignored) and `scripts/env.*` will put it on PATH
+   automatically. `dfu-util` is only needed to flash, not to build. VS Code is
+   optional (tasks + IntelliSense are wired in `.vscode/`).
+2. **Libraries** — wired as git submodules under `lib/`; build them once:
    ```sh
-   git submodule update --init --recursive   # if cloning fresh
+   git submodule update --init --recursive   # if you didn't clone with --recurse-submodules
    scripts/build-libs.sh      # or scripts\build-libs.ps1 on Windows
    ```
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
@@ -89,4 +98,13 @@ class implementing `IMode` (`src/modes/mode.h`) into the array in `main.cpp`.
 See [`docs/IDEAS.md`](docs/IDEAS.md) for the tiered backlog (analog inputs, the
 deferred motion IMU, the wireless spinning-top modulator, future modes, presets…).
 
-License: GPL-3.0 (inherited from the Hothouse hardware proxy).
+## License & credits
+
+**GPL-3.0-or-later.** Copyright (C) 2026 Joakim Langkilde. See [`LICENSE`](LICENSE).
+
+The licence is GPL because the project compiles in the **Hothouse hardware proxy**
+(`src/hothouse.cpp` / `.h`), which is GPL-3.0 © Cleveland Music Co. — included from
+[HothouseExamples](https://github.com/clevelandmusicco/HothouseExamples) with its header
+intact. [libDaisy](https://github.com/electro-smith/libDaisy) and
+[DaisySP](https://github.com/electro-smith/DaisySP) (both MIT, © Electrosmith) are pulled
+in as submodules under `lib/`, not redistributed here.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  sensors.h  --  analog "oddity" inputs on free ADC pins.  (REAL, not a stub)
 // =============================================================================

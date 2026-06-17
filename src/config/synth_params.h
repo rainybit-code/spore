@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  synth_params.h  --  extended synth voice parameters (beyond the 6 knobs).
 // =============================================================================

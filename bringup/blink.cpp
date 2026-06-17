@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // Minimal bring-up test: boot the bare Daisy Seed and blink the onboard LED.
 // No Hothouse init, no codec audio, no USB, no SDRAM/FX. If THIS blinks, the
 // board boots our flashed code fine and the bug is later in the real firmware's

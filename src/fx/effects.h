@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  effects.h  --  global FX block (delay + reverb), decoupled from the modes.
 // =============================================================================

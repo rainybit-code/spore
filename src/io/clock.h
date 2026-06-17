@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  clock.h  --  the pedal's local tempo clock (with MIDI-clock override).
 // =============================================================================

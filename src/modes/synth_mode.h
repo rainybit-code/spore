@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  synth_mode.h  --  MODE 1: polyphonic synth (Phase 2/3: poly + LFO).
 // =============================================================================

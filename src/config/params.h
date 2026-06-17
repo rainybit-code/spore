@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  params.h  --  SINGLE SOURCE OF TRUTH for every tunable value in the synth.
 // =============================================================================
