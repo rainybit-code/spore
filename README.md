@@ -1,5 +1,7 @@
 # 🌱 Spore — Versatile Generative Synth / FX Pedal
 
+[![firmware build](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml/badge.svg)](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml)
+
 **Spore** is firmware that turns an [Electrosmith Daisy Seed](https://daisy.audio) in a
 [Cleveland Music Co. Hothouse](https://clevelandmusicco.com) enclosure into a multi-mode
 instrument:
