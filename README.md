@@ -99,6 +99,23 @@ class implementing `IMode` (`src/modes/mode.h`) into the array in `main.cpp`.
 See [`docs/IDEAS.md`](docs/IDEAS.md) for the tiered backlog (analog inputs, the
 deferred motion IMU, the wireless spinning-top modulator, future modes, presets…).
 
+## Releases & versioning
+
+CI (GitHub Actions, [`.github/workflows/firmware.yml`](.github/workflows/firmware.yml))
+builds the firmware on every push/PR. Versioning is [SemVer](https://semver.org/) via git
+tags; pushing a `vX.Y.Z` tag builds and publishes a **GitHub Release** with
+`spore-vX.Y.Z.{bin,hex,elf}` attached. See [`CHANGELOG.md`](CHANGELOG.md).
+
+```sh
+# cut a release
+#  …update CHANGELOG.md, commit, then:
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+Flash a release `.bin` over USB DFU (hold **BOOT**, tap **RESET**, then
+`scripts/flash.*`), or drag the `.bin` into the [Daisy Web Programmer](https://flash.daisy.audio).
+
 ## License & credits
 
 **GPL-3.0-or-later.** Copyright (C) 2026 Joakim Langkilde. See [`LICENSE`](LICENSE).

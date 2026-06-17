@@ -1,0 +1,74 @@
+name: firmware
+
+# Build the Spore firmware on every push/PR, and publish a GitHub Release with the
+# binaries whenever a version tag (vX.Y.Z) is pushed.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write        # needed to create Releases on tag builds
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0     # full history so `git describe` can see tags
+
+      - name: Install ARM GCC toolchain
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '12.3.Rel1'   # matches the local xPack 12.3.x toolchain
+
+      - name: Derive version
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VER="${GITHUB_REF_NAME}"
+          else
+            VER="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Building version: $VER"
+
+      - name: Build libDaisy + DaisySP
+        run: |
+          make -C lib/libDaisy -j"$(nproc)"
+          make -C lib/DaisySP  -j"$(nproc)"
+
+      - name: Build firmware
+        run: make -j"$(nproc)"
+
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          V="${{ steps.ver.outputs.version }}"
+          for ext in bin hex elf; do
+            cp "build/daisy_synth.$ext" "dist/spore-${V}.$ext"
+          done
+          ls -l dist
+          # size report (handy in the build log)
+          arm-none-eabi-size build/daisy_synth.elf || true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: spore-${{ steps.ver.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish Release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
