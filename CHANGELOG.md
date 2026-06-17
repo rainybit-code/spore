@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.1.0] - 2026-06-17
 - First tagged release: multi-mode synth / granular / generative firmware with the
   shared modulation engine, tempo-synced delay + MIDI clock, and analog-sensor input.
 - USB device name: the pedal now enumerates as **"Spore"** (manufacturer "rainybit")
