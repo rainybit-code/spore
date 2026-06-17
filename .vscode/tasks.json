@@ -30,13 +30,6 @@
       "command": "make clean",
       "problemMatcher": [],
       "detail": "Remove app build artifacts"
-    },
-    {
-      "label": "monitor (serial)",
-      "type": "shell",
-      "command": "pwsh -File scripts/monitor.ps1",
-      "problemMatcher": [],
-      "detail": "Open the Daisy USB serial log"
     }
   ]
 }
