@@ -11,8 +11,7 @@ instrument:
 - **Generative** — self-playing "Krell" voice (random-walk pitch, evolving envelopes)
 
 …plus a shared **modulation engine** (hardware-RNG LFOs / sample & hold / 6-slot mod
-matrix), a **tempo-synced** delay + clock, and **non-standard inputs** (analog sensor on
-a free ADC pin, optional I2C motion IMU).
+matrix), a **tempo-synced** delay + clock, and an **analog sensor input** on a free ADC pin.
 
 Configure it live from its companion browser editor,
 **[Propagator](https://github.com/rainybit-code/propagator)** (WebMIDI, no install) —
@@ -72,7 +71,6 @@ git clone --recurse-submodules <repo-url>    # pulls libDaisy + DaisySP too
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
 4. **Flash** (no programmer needed): put the Daisy in DFU mode (hold **BOOT**, tap
    **RESET**), then `scripts/flash.sh` (or `.ps1`).
-5. **Debug**: `daisy.PrintLine(...)` over USB serial → `scripts/monitor.ps1`.
 
 ## Project layout
 
@@ -85,7 +83,7 @@ src/
   mod/modulation.h    random LFO / sample&hold / random walk / RNG
   fx/effects.h        decoupled global FX: delay + reverb (Toggle 3)
   io/                 controls, knobs (shift-layer soft-takeover), midi_in,
-                      imu (I2C, tier-2), sensors (analog ADC)
+                      clock (MIDI clock), sensors (analog ADC)
 lib/                  libDaisy + DaisySP (git submodules)
 scripts/              build / flash / build-libs / clean / monitor (.sh + .ps1)
 pd/                   Pure Data sketches for prototyping DSP ideas
@@ -101,13 +99,11 @@ class implementing `IMode` (`src/modes/mode.h`) into the array in `main.cpp`.
   handled in `src/io/sensors.h` (extends the ADC; more channels: A9=D24, A11=D28).
   Feeds the modulation routing in each mode's `Control()`; neutral (no effect) until
   the hardware is connected.
-- **Motion IMU** over I2C1 (D11/D12) — **tier 2, deferred**. `src/io/imu.h` is a ready
-  slot but is not part of the current build.
 
 ## Ideas & roadmap
 
-See [`docs/IDEAS.md`](docs/IDEAS.md) for the tiered backlog (analog inputs, the
-deferred motion IMU, the wireless spinning-top modulator, future modes, presets…).
+See [`docs/IDEAS.md`](docs/IDEAS.md) for the tiered backlog (more inputs, a wireless
+modulator, future modes, presets…).
 
 ## Releases & versioning
 
