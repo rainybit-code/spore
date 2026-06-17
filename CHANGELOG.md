@@ -5,8 +5,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
-
-## [v0.1.0] - 2026-06-17
 - First tagged release: multi-mode synth / granular / generative firmware with the
   shared modulation engine, tempo-synced delay + MIDI clock, and analog-sensor input.
 - USB device name: the pedal now enumerates as **"Spore"** (manufacturer "rainybit")
@@ -16,8 +14,8 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 - Public-release prep: GPL-3.0 licensing + SPDX headers, build/release CI, README.
 
 <!--
-Releasing:
-  1. Move the Unreleased items under a new `## [vX.Y.Z] - YYYY-MM-DD` heading.
-  2. Commit, then tag:  git tag -a vX.Y.Z -m "vX.Y.Z"  &&  git push origin vX.Y.Z
-  3. The `firmware` workflow builds and attaches spore-vX.Y.Z.{bin,hex,elf} to the Release.
+Releasing:  scripts/release.sh vX.Y.Z      (or  scripts\release.ps1 vX.Y.Z  on Windows)
+  Add your notes under [Unreleased] above, then run that one command: it moves them
+  under a dated [vX.Y.Z] heading, commits, tags, and pushes. CI builds
+  spore-vX.Y.Z.{bin,hex,elf} and publishes a Release whose body IS this CHANGELOG section.
 -->

@@ -106,13 +106,13 @@ deferred motion IMU, the wireless spinning-top modulator, future modes, presetsâ
 CI (GitHub Actions, [`.github/workflows/firmware.yml`](.github/workflows/firmware.yml))
 builds the firmware on every push/PR. Versioning is [SemVer](https://semver.org/) via git
 tags; pushing a `vX.Y.Z` tag builds and publishes a **GitHub Release** with
-`spore-vX.Y.Z.{bin,hex,elf}` attached. See [`CHANGELOG.md`](CHANGELOG.md).
+`spore-vX.Y.Z.{bin,hex,elf}` attached, using the matching [`CHANGELOG.md`](CHANGELOG.md)
+section as the release notes.
 
 ```sh
-# cut a release
-#  â€¦update CHANGELOG.md, commit, then:
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+# 1. add your notes under "## [Unreleased]" in CHANGELOG.md
+# 2. cut the release in one command (moves notes -> dated heading, commits, tags, pushes):
+scripts/release.sh v0.2.0          # or:  scripts\release.ps1 v0.2.0   (Windows)
 ```
 
 Flash a release `.bin` over USB DFU (hold **BOOT**, tap **RESET**, then

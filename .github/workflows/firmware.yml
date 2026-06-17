@@ -65,10 +65,18 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+      - name: Extract changelog section for this tag
+        if: github.ref_type == 'tag'
+        run: |
+          awk -v h="## [${GITHUB_REF_NAME}]" 'index($0,h)==1{f=1;next} f&&(/^## \[/||/^<!--/){exit} f{print}' \
+            CHANGELOG.md > RELEASE_NOTES.md
+          if [ ! -s RELEASE_NOTES.md ]; then echo "Release ${GITHUB_REF_NAME}" > RELEASE_NOTES.md; fi
+          echo "----- release notes -----"; cat RELEASE_NOTES.md
+
       - name: Publish Release (tags only)
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          generate_release_notes: true
+          body_path: RELEASE_NOTES.md
           fail_on_unmatched_files: true
