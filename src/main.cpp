@@ -76,7 +76,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   g_mod.Process();
 
   // Hand control to a physical toggle the moment it's MOVED from its boot
-  // position (so the pedal boots quiet but the hardware switches still work).
+  // position (so Spore boots quiet but the hardware switches still work).
   static int last_tog_mode = CurrentMode(hw);
   static int last_tog_fx   = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
   int tog_mode = CurrentMode(hw);

@@ -12,7 +12,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 ## [v0.1.0] - 2026-06-17
 - First tagged release: multi-mode synth / granular / generative firmware with the
   shared modulation engine, tempo-synced delay + MIDI clock, and analog-sensor input.
-- USB device name: the pedal now enumerates as **"Spore"** (manufacturer "rainybit")
+- USB device name: Spore now enumerates as **"Spore"** (manufacturer "rainybit")
   instead of "Daisy Seed Built In", via a vendored `src/usb_identity.c` descriptor
   override. VID/PID kept at the stock Daisy/STM values (a real custom VID/PID is a
   one-line edit there, deferred until productization).

@@ -1,18 +1,14 @@
 # Ideas & Backlog
 
-Running list of ideas for the Daisy Seed + Hothouse synth. Tagged by status so
-it's easy to see what's done vs. what's parked.
+Forward-looking backlog for Spore — open ideas and parked work, tagged by priority.
+Shipped features live in [`CHANGELOG.md`](../CHANGELOG.md), not here.
 
-Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferred) · 🅲 tier-3 (ambitious) · 💡 idea
+Legend: 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferred) · 🅲 tier-3 (ambitious) · 💡 idea
 
 ---
 
 ## Inputs
 
-- ✅ **Built-in audio in** — the Hothouse has stereo 1/4" in & out. Granular mode
-  records and reuses it; bypass passes it through. (Synth & Generative ignore it.)
-- ✅ **Analog sensor input** — real ADC channel on free pin **A0/D15** (`io/sensors.h`).
-  Works with LDR / FSR / flex / expression pedal / CV via a voltage divider.
 - 💡 **More analog inputs** — A9/D24 and A11/D28 are also free; bump
   `AnalogSensors::kNumSensors` and add pins. Could host an expression-pedal jack
   or a couple of light/touch sensors at once.
@@ -28,10 +24,10 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 - Daisy has **no built-in radio** → needs a link.
 - **Transport options (recommended first):**
   - **nRF24L01+ (2.4 GHz, SPI)** — *recommended*. Cheap (~$2/pair), low latency,
-    Daisy can be the **receiver directly over SPI** (no bridge MCU on the pedal).
+    Daisy can be the **receiver directly over SPI** (no bridge MCU on the device).
     Top = small MCU + IMU + nRF24 + LiPo (e.g. a Seeed XIAO).
-  - **ESP-NOW** — ESP32 in the top + ESP32 on the pedal bridged to Daisy over
-    UART. Very simple, good latency, but adds a chip on the pedal side.
+  - **ESP-NOW** — ESP32 in the top + ESP32 on the device, bridged to Daisy over
+    UART. Very simple, good latency, but adds a chip on the device side.
   - **BLE** — XIAO nRF52840 *Sense* (IMU built in) is tidy on the top side, but
     Daisy can't easily be a BLE central → needs a receiver module. Most work.
 - **Mapping (the "wobble"):** spin rate → modulation rate/intensity; precession /
@@ -42,53 +38,30 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 
 ## Modes & sound
 
-- ✅ **Synth** (USB MIDI), **Granular** (with freeze), **Generative/Krell** (self-play).
-- ✅ **Global FX block** — decoupled delay + reverb (`fx/effects.h`), selected by
-  Toggle 3, edited via the Footswitch-1 shift-layer (soft-takeover). Processes the
-  active mode's output.
 - 💡 **More FX / FX modes** — shimmer (pitch-shifted reverb), modulated/chorus delay,
   ping-pong, per-mode FX presets, or a second FX slot (delay → reverb in series).
-- 💡 More modes are easy — implement `IMode` (`modes/mode.h`) and add to the array
-  in `main.cpp`. Candidates: drone/oscillator bank, resonator, wavefolder,
-  sample looper.
-- ✅ **Mod routing matrix** — 6 source→destination→amount slots (LFO1/LFO2/Random/
-  Sensor + per-voice Velocity/Key → cutoff/pitch/scan/drive/sub/FM/amp/LFO rates).
-  See [`MODULATION.md`](MODULATION.md). 💡 still open: let a wireless source and the
-  Generative seed wire slots too.
+- 💡 **More modes** — implement `IMode` (`modes/mode.h`) and add to the array in
+  `main.cpp`. Candidates: drone/oscillator bank, resonator, wavefolder, sample looper.
+- 💡 **Mod-matrix extensions** — let a wireless source and the Generative seed wire
+  the matrix slots (the 6-slot matrix itself exists — see [`MODULATION.md`](MODULATION.md)).
 - 💡 **Granular v2** — stereo grains, panning spread, reverse grains, pitch-quantize
   to a scale, grain-density envelope.
 - 💡 **Generative v2** — Euclidean rhythm engine, probabilistic gates, multiple
-  voices, chord/scale-aware walks, tempo from tap or MIDI clock.
+  voices, chord/scale-aware walks.
 
 ## Connectivity & management (USB MIDI ↔ browser)
 
 Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 
-- ✅ **Live param control over CC** — the pedal is a USB MIDI device; CC 20–87 drive
-  the live values (mode/FX knobs with soft-takeover + the full synth panel). Built in
-  firmware (`io/midi_in.h`).
-- ✅ **MIDI clock / tempo sync** — local clock that free-runs and locks to incoming
-  MIDI clock; drives the tempo-synced delay and clock-synced LFO rates
-  (`MIDI_PROTOCOL.md` §1a).
-- ✅ **WebMIDI editor ("Propagator")** — separate repo `propagator` (live on GitHub
-  Pages). Full synth editor (engine/wavetable, ADSR graph, LFO1/2, 6-slot patchbay,
-  step sequencer, tempo/clock) plus in-browser firmware flashing (WebUSB DFU).
-  Chromium only; needs https/localhost.
-- 🔜 **2-way sync (SysEx)** — device identify + full patch dump/load so the UI
-  mirrors the pedal. Needs the central `Patch` store (see mod-matrix idea above).
+- 🔜 **2-way sync (SysEx)** — full patch dump/load so the editor mirrors the device.
+  Needs the central `Patch` store.
 - 🔜 **Preset librarian** — patches saved in the browser (JSON/localStorage) **and**
-  on the pedal in **QSPI** (`PersistentStorage`) so they survive power-off.
+  on the device in **QSPI** (`PersistentStorage`) so they survive power-off.
 - 🅲 **Sample loading** — upload an audio sample over chunked SysEx into **QSPI**
   (8 MB), read back memory-mapped, played by a sample-player source (feeds granular
   or a new mode). Biggest piece; the real driver for using QSPI as data storage
   (note: data in QSPI does NOT require `BOOT_QSPI` — code can stay in internal flash).
-- 💡 **MIDI clock / tempo sync** — the Propagator BPM dial is currently a visual
-  metronome only; nothing in the firmware uses tempo. Make it real: browser
-  transmits **MIDI Clock** (`0xF8`, 24 ppqn) + Start/Stop at the set BPM; firmware
-  derives BPM and syncs tempo-able params to note divisions — generative **event
-  rate**, FX **delay time** (1/4, dotted-1/8…), and mod **LFO rates**. Add a per-param
-  "free vs. synced" toggle. (Pairs with the central Patch / mod-matrix.)
-- 🅲 **USB audio (UAC, composite with MIDI)** — make the pedal a USB audio
+- 🅲 **USB audio (UAC, composite with MIDI)** — make the device a USB audio
   interface (record dry/wet into a DAW, use as a computer FX processor). Feasible:
   the STM32H750 USB is full-speed (stereo 48k/24-bit fits) and the ST **AUDIO**
   class + **CompositeBuilder** source is already vendored in libDaisy — but libDaisy
@@ -98,7 +71,7 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
   to sync the codec clock to USB SOF (the hard part — drift/clicks otherwise), all
   composed with MIDIStreaming. Substantial + experimental; can only be tuned on
   hardware; adds buffering latency vs the analog jacks. Not needed for standalone
-  pedal use (the Hothouse has analog stereo I/O).
+  use (the Hothouse has analog stereo I/O).
 - 💡 **protobuf for the protocol** — instead of hand-rolled SysEx byte layouts, define
   messages in `.proto` and codegen both ends (**nanopb** on firmware, **protobuf.js**
   in the browser); frame the encoded bytes in SysEx (7→8-bit). Schema-driven, versioned,
@@ -107,14 +80,10 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 
 ## Workflow & quality of life
 
-- ✅ Centralized tunables in `config/params.h`; build/flash scripts; VS Code tasks.
 - 🔜 **Build-verify on hardware** — install ARM toolchain, `scripts/build-libs`,
-  then `scripts/flash`. Confirm audio passthrough + each mode (see plan
-  Milestones / Verification).
+  then `scripts/flash`. Confirm audio passthrough + each mode.
 - 💡 **Preset save/recall** — persist the live `Patch` to QSPI flash
   (`PersistentStorage`); footswitch combo or a knob to select slots.
-- 💡 **MIDI CC control** — map incoming CCs to parameters (pairs well with the mod
-  matrix); MIDI clock sync for generative timing.
 - 💡 **LED feedback** — richer status (blink on generative triggers, freeze
   indicator, mode color/brightness language).
 - 💡 **Pure Data prototyping** — sketch new DSP/generative ideas in `pd/` first,
@@ -123,7 +92,7 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 ## Memory / boot layout — parked until flash gets tight
 
 Currently `APP_TYPE = BOOT_NONE`: the app runs from the **128 KB internal flash**
-(~92% today — delay + reverb only cost ~2 KB of flash because ReverbSc's big
+(~94% today — delay + reverb only cost ~2 KB of flash because ReverbSc's big
 buffer lives in SDRAM). Keep it this way until code actually outgrows 128 KB — no
 bootloader, simplest flashing. Note: **preset-save does NOT require leaving
 internal flash** (`PersistentStorage` keeps *data* in QSPI regardless of where
@@ -134,7 +103,7 @@ bootloader once via `make program-boot`):
 - 🅱️ **`BOOT_SRAM`** — runs from AXI SRAM, **~512 KB**, full speed (no XIP jitter).
   *First choice* when we just need more room. Bootloader reloads app at power-up.
 - 🅲 **`BOOT_QSPI`** — **execute-in-place from the 8 MB QSPI**, ~8 MB code space.
-  M7 I-cache hides most of the QSPI latency (proven on shipping pedals) but can
+  M7 I-cache hides most of the QSPI latency (proven on shipping products) but can
   jitter on cold/large code paths; slower boot. *Reserve for when we want
   megabytes in flash* — e.g. baked-in wavetables / sample buffers for the
   granular & sample-playback ideas. That's the real future driver here.

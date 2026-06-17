@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
-//  clock.h  --  the pedal's local tempo clock (with MIDI-clock override).
+//  clock.h  --  Spore's local tempo clock (with MIDI-clock override).
 // =============================================================================
 //  Free-runs at an internal BPM (set over MIDI from Propagator) and locks to
 //  incoming MIDI timing clock (0xF8, 24 PPQN) whenever it's present -- so either

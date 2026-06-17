@@ -1,4 +1,4 @@
-# 🌱 Spore — Versatile Generative Synth / FX Pedal
+# 🌱 Spore — Versatile Generative Synth / FX
 
 [![firmware build](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml/badge.svg)](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml)
 
@@ -22,6 +22,18 @@ running at **<https://rainybit-code.github.io/propagator/>**. See
 > **Status:** experimental / work-in-progress. Builds clean with arm-none-eabi-gcc
 > 12.3.1 → `build/daisy_synth.bin`. Treat hardware behaviour as unverified until you've
 > flashed and tested on your own unit.
+
+## Hardware / platform
+
+Spore currently targets one platform:
+
+- **MCU board:** [Electrosmith Daisy Seed](https://electro-smith.com/products/daisy-seed)
+  (STM32H750, stereo codec, SDRAM).
+- **Built with:** [libDaisy](https://github.com/electro-smith/libDaisy) +
+  [DaisySP](https://github.com/electro-smith/DaisySP) (vendored as submodules).
+- **Enclosure:** the [Cleveland Music Co. Hothouse](https://shop.clevelandmusicco.com/products/hothouse-digital-signal-processing-platform-kit)
+  DIY kit — chosen for ease of use, since it brings out 6 knobs, 3 toggles, 2
+  footswitches, 2 LEDs and stereo 1/4" I/O off the shelf (no custom panel needed).
 
 ## Control surface
 

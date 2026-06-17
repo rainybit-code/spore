@@ -14,7 +14,7 @@
 //
 //  STATUS: STUB. Until the hardware is wired and a chip is chosen this returns
 //  neutral values (0.5 / 0) and Present() == false, so it compiles and runs
-//  harmlessly on a bare pedal. Fill in Init()/Process() against the chosen chip.
+//  harmlessly on bare hardware. Fill in Init()/Process() against the chosen chip.
 //
 //  Reference for the real implementation:
 //    - daisy::I2CHandle (lib/libDaisy) to talk to the chip

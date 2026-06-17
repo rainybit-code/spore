@@ -6,7 +6,7 @@ presets, and uploads samples. This is the contract both sides build against.
 > **Status legend:** ✅ implemented · 🔜 specced, not built yet
 
 WebMIDI notes: use a **Chromium** browser (Chrome/Edge). SysEx needs a **secure
-context** (https or localhost) + a permission prompt. The pedal is only reachable
+context** (https or localhost) + a permission prompt. The device is only reachable
 while plugged into the computer running the browser.
 
 Manufacturer SysEx ID: **`0x7D`** (the reserved "non-commercial / educational" ID —
@@ -67,7 +67,7 @@ Mod-matrix source/destination lists and encoding are in
 
 ## 1a. Tempo & transport — MIDI clock ✅ (in firmware)
 
-The pedal runs a local clock that **free-runs** at an internal BPM but **locks to
+The device runs a local clock that **free-runs** at an internal BPM but **locks to
 incoming MIDI clock** when it arrives (≈500 ms timeout back to internal). Either the
 browser or an external MIDI source can be master.
 
@@ -80,8 +80,8 @@ Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
 
 ## 2. Device handshake — SysEx ◐ (identify/version ✅)
 
-- `0x01` **Identify request** (web→pedal), no payload: `F0 7D 01 F7`.
-- `0x41` **Identify reply** (pedal→web): `F0 7D 41 <version ASCII> F7` — the firmware
+- `0x01` **Identify request** (web→device), no payload: `F0 7D 01 F7`.
+- `0x41` **Identify reply** (device→web): `F0 7D 41 <version ASCII> F7` — the firmware
   version (semver, no leading `v`), e.g. `F0 7D 41 30 2E 31 2E 30 F7` = `"0.1.0"`.
   Propagator uses this to flag when a newer release is available (pulsing the DFU
   button). 🔜 Fuller capabilities (protocol rev, mode/knob/slot counts, free QSPI)
@@ -93,22 +93,22 @@ A "patch" = every live value: MODE-layer knobs ×6, FX-layer knobs ×6, mode sel
 FX select, and (later) mod/sensor routing. Encoded 14-bit per value (two 7-bit
 bytes) so there's no resolution loss.
 
-- `0x10` **Dump request** (web→pedal) → pedal replies `0x50` with the full patch.
-- `0x50` **Patch dump** (pedal→web).
-- `0x11` **Patch load** (web→pedal): set all live values at once.
+- `0x10` **Dump request** (web→device) → device replies `0x50` with the full patch.
+- `0x50` **Patch dump** (device→web).
+- `0x11` **Patch load** (web→device): set all live values at once.
 
-This is what keeps the web UI in sync with the pedal, and is the unit a preset
+This is what keeps the web UI in sync with the device, and is the unit a preset
 stores.
 
 ## 4. Presets — SysEx + QSPI 🔜 (Phase 3, needs hardware)
 
 Presets are patches (§3). Two stores:
 - **Browser librarian**: presets saved as JSON in `localStorage` / exported files.
-- **On-pedal**: saved to **QSPI flash** (`daisy::PersistentStorage` / `QSPIHandle`)
+- **On-device**: saved to **QSPI flash** (`daisy::PersistentStorage` / `QSPIHandle`)
   so they survive power-off and recall without the computer.
 
-- `0x20` **Save to slot** `N` (pedal writes current patch to QSPI slot N).
-- `0x21` **Recall slot** `N` (pedal loads slot N; also emits a `0x50` dump so the
+- `0x20` **Save to slot** `N` (device writes current patch to QSPI slot N).
+- `0x21` **Recall slot** `N` (device loads slot N; also emits a `0x50` dump so the
   UI follows). Program Change `N` is an alias for recall.
 - `0x22` **List slots** → reply `0x52` with slot names/occupancy.
 
@@ -127,10 +127,10 @@ so a few hundred KB transfers in seconds. Constraints:
 
 Flow:
 - `0x30` **Upload begin**: slot, total bytes, sample rate, channels, format.
-  Pedal erases the QSPI region and replies `0x40` ACK (ready).
-- `0x31` **Chunk**: 16-bit sequence + encoded data. Pedal writes to QSPI, replies
+  Device erases the QSPI region and replies `0x40` ACK (ready).
+- `0x31` **Chunk**: 16-bit sequence + encoded data. Device writes to QSPI, replies
   `0x40` ACK(seq) or NAK(seq) for retransmit.
-- `0x32` **Upload end**: total checksum. Pedal verifies, commits, replies `0x40`.
+- `0x32` **Upload end**: total checksum. Device verifies, commits, replies `0x40`.
 - `0x40` **ACK/NAK**: seq + status (used for flow control / resend).
 
 ---
@@ -140,7 +140,7 @@ Flow:
 1. ✅ **Live control (CC) + MIDI clock** — firmware and the full Propagator editor
    are done (synth panel, mod matrix, sequencer, tempo/clock).
 2. 🔜 **Handshake + patch dump/load (SysEx)** — 2-way sync; central `Patch` store.
-3. 🔜 **Presets** — QSPI save/recall on pedal + browser librarian.
+3. 🔜 **Presets** — QSPI save/recall on device + browser librarian.
 4. 🔜 **Sample upload** — chunked SysEx → QSPI + a sample-player source.
 
 The web tool, **Propagator**, lives in a separate repo
