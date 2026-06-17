@@ -103,10 +103,10 @@ class SynthMode : public IMode {
     // ---- mod matrix: global sources -> destination offsets (applied to all voices) ----
     float src[5] = {0.0f, lfo, lfo2, ctx.mod.Lfo1(), ctx.sensors.Light() * 2.0f - 1.0f};
     float mod[7] = {0, 0, 0, 0, 0, 0, 0};   // cutoff/pitch/scan/drive/sub/fm/amp
-    const int kSrc[3] = {SP_M1_SRC, SP_M2_SRC, SP_M3_SRC};
-    const int kDst[3] = {SP_M1_DST, SP_M2_DST, SP_M3_DST};
-    const int kAmt[3] = {SP_M1_AMT, SP_M2_AMT, SP_M3_AMT};
-    for (int s = 0; s < 3; ++s) {
+    const int kSrc[6] = {SP_M1_SRC, SP_M2_SRC, SP_M3_SRC, SP_M4_SRC, SP_M5_SRC, SP_M6_SRC};
+    const int kDst[6] = {SP_M1_DST, SP_M2_DST, SP_M3_DST, SP_M4_DST, SP_M5_DST, SP_M6_DST};
+    const int kAmt[6] = {SP_M1_AMT, SP_M2_AMT, SP_M3_AMT, SP_M4_AMT, SP_M5_AMT, SP_M6_AMT};
+    for (int s = 0; s < 6; ++s) {
       int si = clampi(static_cast<int>(p.v[kSrc[s]] * 4.99f), 0, 4);
       if (si == 0) continue;   // Off
       int di = clampi(static_cast<int>(p.v[kDst[s]] * 6.99f), 0, 6);

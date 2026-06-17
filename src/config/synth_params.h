@@ -40,9 +40,12 @@ enum SynthParam {
   // --- modulation: LFO2 + 3-slot mod matrix ---
   SP_LFO2_RATE,    // LFO2 rate
   SP_LFO2_SHAPE,   // LFO2 shape (Sin / Tri / Saw / Sqr)
-  SP_M1_SRC, SP_M1_DST, SP_M1_AMT,   // slot 1: source / destination / bipolar amount
+  SP_M1_SRC, SP_M1_DST, SP_M1_AMT,   // matrix slot 1: source / destination / bipolar amount
   SP_M2_SRC, SP_M2_DST, SP_M2_AMT,   // slot 2
   SP_M3_SRC, SP_M3_DST, SP_M3_AMT,   // slot 3
+  SP_M4_SRC, SP_M4_DST, SP_M4_AMT,   // slot 4
+  SP_M5_SRC, SP_M5_DST, SP_M5_AMT,   // slot 5
+  SP_M6_SRC, SP_M6_DST, SP_M6_AMT,   // slot 6 (patchbay = up to 6 cables)
   SP_COUNT,
 };
 
@@ -52,6 +55,9 @@ struct SynthParams {
                        0.00f, 0.30f, 0.00f, 0.25f, 0.00f, 0.00f,
                        0.00f, 0.00f, 0.33f, 0.00f, 0.00f,
                        0.30f, 0.00f,
+                       0.00f, 0.00f, 0.50f,
+                       0.00f, 0.00f, 0.50f,
+                       0.00f, 0.00f, 0.50f,
                        0.00f, 0.00f, 0.50f,
                        0.00f, 0.00f, 0.50f,
                        0.00f, 0.00f, 0.50f};
