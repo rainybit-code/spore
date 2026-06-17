@@ -24,12 +24,20 @@ enum SynthParam {
   SP_LFO_SHAPE,    // LFO shape (0..1 -> Sin / Tri / Saw / Sqr)
   SP_LFO_DEST,     // LFO destination (0..1 -> Off / Vibrato / Filter / Tremolo)
   SP_VOICES,       // polyphony (0..1 -> 1..6 voices; fewer = more CPU headroom)
+  // --- digital / wavetable engine (Phase 3) ---
+  SP_ENGINE,       // voice engine (0..1 -> Analog / Wavetable)
+  SP_WT_POS,       // wavetable scan position (morph sine -> bright)
+  SP_FM_AMT,       // FM depth (modulator -> carrier phase)
+  SP_FM_RATIO,     // FM ratio (0..1 -> {0.5, 1, 2, 3})
+  SP_FOLD,         // wavefold amount (digital grit)
+  SP_WT_BANK,      // wavetable bank (0..1 -> Saw / Square / Organ / Vocal / Digital)
   SP_COUNT,
 };
 
 struct SynthParams {
   float v[SP_COUNT] = {0.25f, 0.40f, 0.70f, 0.30f, 0.50f, 0.30f, 0.00f, 0.60f, 0.66f,
-                       0.30f, 0.00f, 0.00f, 0.33f, 0.60f};
+                       0.30f, 0.00f, 0.00f, 0.33f, 0.60f,
+                       0.00f, 0.30f, 0.00f, 0.25f, 0.00f, 0.00f};
 };
 
 extern SynthParams g_synthParams;  // defined in main.cpp
