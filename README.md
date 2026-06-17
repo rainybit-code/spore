@@ -128,3 +128,9 @@ The licence is GPL because the project compiles in the **Hothouse hardware proxy
 intact. [libDaisy](https://github.com/electro-smith/libDaisy) and
 [DaisySP](https://github.com/electro-smith/DaisySP) (both MIT, © Electrosmith) are pulled
 in as submodules under `lib/`, not redistributed here.
+
+## AI disclosure
+
+In the interest of transparency: this project was built with substantial help from AI.
+Code, documentation, and design were generated and iterated with **Claude** (Claude Code)
+under human direction and review.

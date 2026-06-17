@@ -14,30 +14,69 @@ correct for a DIY device). All SysEx frames: `F0 7D <cmd> <payload…> F7`.
 
 ---
 
-## 1. Live parameter control — Control Change ✅ (Phase 1, in firmware)
+## 1. Live parameter control — Control Change ✅ (in firmware)
 
-CC value `0..127` maps to the normalized `0..1` knob value and is applied with
-**soft-takeover**: the value sticks until the matching physical knob is moved to it
-(motorized-fader feel). What "knob N" means depends on the active mode (see
-`config/params.h`).
+CC value `0..127` maps to the normalized `0..1` parameter value. The 6 MODE/FX
+knobs are applied with **soft-takeover** (the value sticks until the matching
+physical knob is moved to it); synth-panel params apply immediately. What "knob N"
+means depends on the active mode. All numbers are defined in
+[`config/params.h`](../src/config/params.h) (`namespace midi`).
 
 | CC#    | Target                          |
 |--------|---------------------------------|
-| 16     | Mode select (0/64/127 → synth / granular / generative) |
-| 17     | FX select (0/64/127 → off / delay / reverb) |
-| 20–25  | MODE-layer knobs 1–6 (active mode's macros) |
+| 14     | Internal clock **tempo** (0..127 → 40..200 BPM) — see §1a |
+| 15     | **Delay sync** division (0 off · 1 = 1/4 · 2 = 1/8 · 3 = dotted-1/8 · 4 = 1/16) |
+| 16     | Mode select (thirds: 0..42 synth / 43..85 granular / 86..127 generative) |
+| 17     | FX select (thirds: off / delay / reverb) |
+| 20–25  | MODE-layer knobs 1–6 (active mode's macros, soft-takeover) |
 | 26–31  | FX-layer knobs 1–6 (mix / delay time / fb / tone / rev decay / damp) |
-| 40–53  | Synth panel params (`SP_*`, see `config/synth_params.h`) |
+| 40–87  | Synth panel params (`SP_*`, `kCcSynthBase + index`; full list below) |
+| 119    | Reboot to **DFU** bootloader when value ≥ 64 (remote flashing) |
 
-Synth-panel CCs (CC `kCcSynthBase` + index): 40 detune · 41 sub · 42 sustain ·
-43 release · 44 f.env amt · 45 f.env time · 46 glide · 47 width · 48 wave · 49 LFO
-rate · 50 LFO depth · 51 LFO shape · 52 LFO dest · **53 voices** (0..1 → 1..6;
-fewer voices = more CPU headroom for reverb/LFO, 1 = mono).
+**Synth-panel CCs** (`CC = 40 + SP_* index`, see
+[`config/synth_params.h`](../src/config/synth_params.h)):
 
-Notes (NoteOn/NoteOff) play the synth voice as before.
+| CC | param | CC | param |
+|----|-------|----|-------|
+| 40 | detune | 60 | drive |
+| 41 | sub level | 61 | filter type (Svf / Moog) |
+| 42 | sustain | 62 | unison |
+| 43 | release | 63 | sub octave |
+| 44 | filter-env amount | 64 | sub waveform |
+| 45 | filter-env time | 65 | LFO2 rate |
+| 46 | glide | 66 | LFO2 shape |
+| 47 | stereo width | 67–69 | matrix slot 1 (src / dst / amt) |
+| 48 | waveform | 70–72 | matrix slot 2 |
+| 49 | LFO1 rate | 73–75 | matrix slot 3 |
+| 50 | LFO1 depth | 76–78 | matrix slot 4 |
+| 51 | LFO1 shape | 79–81 | matrix slot 5 |
+| 52 | LFO1 dest | 82–84 | matrix slot 6 |
+| 53 | voices (1..6) | 85 | LFO2 depth |
+| 54 | engine (analog / wavetable) | 86 | LFO1 sync |
+| 55 | WT scan | 87 | LFO2 sync |
+| 56 | FM amount | | |
+| 57 | FM ratio | | |
+| 58 | wavefold | | |
+| 59 | WT bank | | |
+
+Mod-matrix source/destination lists and encoding are in
+[`MODULATION.md`](MODULATION.md). NoteOn/NoteOff play the synth voice.
 
 > Resolution is 7-bit. Params that want finer control can later use 14-bit NRPN;
 > the canonical full-resolution path is the SysEx patch dump/load below.
+
+## 1a. Tempo & transport — MIDI clock ✅ (in firmware)
+
+The pedal runs a local clock that **free-runs** at an internal BPM but **locks to
+incoming MIDI clock** when it arrives (≈500 ms timeout back to internal). Either the
+browser or an external MIDI source can be master.
+
+- **`0xF8` Timing Clock** (24 ppqn) → drives/locks the tempo.
+- **`0xFA` Start · `0xFB` Continue · `0xFC` Stop** → transport.
+- **CC 14** sets the internal/free-run BPM (40..200) when no external clock is present.
+
+Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
+(`SP_LFO_SYNC` / `SP_LFO2_SYNC`).
 
 ## 2. Device handshake — SysEx 🔜
 
@@ -95,11 +134,13 @@ Flow:
 
 ## Build phases
 
-1. ✅ **Live control (CC)** — firmware done; needs the web page with sliders.
+1. ✅ **Live control (CC) + MIDI clock** — firmware and the full Propagator editor
+   are done (synth panel, mod matrix, sequencer, tempo/clock).
 2. 🔜 **Handshake + patch dump/load (SysEx)** — 2-way sync; central `Patch` store.
 3. 🔜 **Presets** — QSPI save/recall on pedal + browser librarian.
 4. 🔜 **Sample upload** — chunked SysEx → QSPI + a sample-player source.
 
-The web tool ("Propagator") lives in a **separate repo: `propagator-web`** (static;
-run via `python -m http.server` on localhost; deploy to GitHub Pages later). This
-file is the contract it builds against.
+The web tool, **Propagator**, lives in a separate repo
+(<https://github.com/rainybit-code/propagator>, live at
+<https://rainybit-code.github.io/propagator/>). This file is the contract it builds
+against.

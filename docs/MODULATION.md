@@ -4,43 +4,50 @@ The synth voice has fixed per-note modulation (filter envelope -> cutoff, veloci
 -> level/brightness) plus a flexible **mod matrix** for movement.
 
 ## LFOs
-- **LFO1** — the original global LFO with its own quick macro destination
-  (off / vibrato / filter / tremolo), set in the MOD pod.
-- **LFO2** — a second global LFO (rate + shape), intended as a matrix source.
+- **LFO1** — global LFO with its own quick macro destination (off / vibrato /
+  filter / tremolo), set in the MOD pod; also usable as a matrix source.
+- **LFO2** — a second global LFO (rate + shape + master depth), a matrix source.
 
-Both are free-running for now. Tempo-sync (lock to the sequencer / MIDI clock) is
-a planned phase.
+Each LFO can run **free (Hz)** or **clock-synced** to the tempo, selected per-LFO via
+`SP_LFO_SYNC` / `SP_LFO2_SYNC` (0 = free Hz, 1..5 → 1/1, 1/2, 1/4, 1/8, 1/16). The
+clock is the local tempo, which locks to MIDI clock — see
+[`MIDI_PROTOCOL.md` §1a](MIDI_PROTOCOL.md).
 
-## Mod matrix (3 slots)
+## Mod matrix (6 slots)
 Each slot routes one **source** to one **destination** with a **bipolar amount**
-(-1..+1). Slots sum per destination; the result is applied to every voice at block
-rate (global movement).
+(-1..+1). Slots sum per destination; the result is applied at block rate. In the
+Propagator editor the 6 slots are the patchbay cables. Global sources apply to every
+voice; the two **per-voice** sources (Velocity, Key) apply to dests 0–5 per note.
 
-| Sources | Destinations |
-|---------|--------------|
-| Off     | Cutoff       |
-| LFO1    | Pitch        |
-| LFO2    | WT-Scan      |
-| Random (S&H) | Drive   |
-| Sensor  | Sub level    |
-|         | FM amount    |
-|         | Amp (tremolo)|
+| # | Source (`src = round(v*6)`) | scope | # | Destination (`dst = round(v*8)`) |
+|---|------------------------------|-------|---|-----------------------------------|
+| 0 | Off                          | —     | 0 | Cutoff |
+| 1 | LFO1                         | global| 1 | Pitch |
+| 2 | LFO2                         | global| 2 | WT-Scan |
+| 3 | Random (S&H)                 | global| 3 | Drive |
+| 4 | Sensor (analog input)        | global| 4 | Sub level |
+| 5 | Velocity                     | per-voice | 5 | FM amount |
+| 6 | Key (note, centred at C4)    | per-voice | 6 | Amp (tremolo) |
+|   |                              |       | 7 | LFO1 rate |
+|   |                              |       | 8 | LFO2 rate |
 
-Applied as: cutoff/pitch/amp are multiplicative trims folded into the existing
-LFO1 routing; scan/drive/sub/FM are additive offsets clamped to 0..1.
+Applied as: cutoff / pitch / amp are trims folded into the existing LFO1 routing;
+scan / drive / sub / FM and the LFO-rate dests are additive offsets clamped to 0..1.
 
 ## MIDI / params
-Extends `config/synth_params.h` (CC base 40):
+Extends [`config/synth_params.h`](../src/config/synth_params.h) (CC base 40):
 
 ```
-SP_LFO2_RATE (CC 65)  SP_LFO2_SHAPE (CC 66)
-SP_M1_SRC/DST/AMT (CC 67-69)
-SP_M2_SRC/DST/AMT (CC 70-72)
-SP_M3_SRC/DST/AMT (CC 73-75)
+SP_LFO2_RATE  (CC 65)   SP_LFO2_SHAPE (CC 66)
+SP_M1_SRC/DST/AMT (CC 67-69)   SP_M4_SRC/DST/AMT (CC 76-78)
+SP_M2_SRC/DST/AMT (CC 70-72)   SP_M5_SRC/DST/AMT (CC 79-81)
+SP_M3_SRC/DST/AMT (CC 73-75)   SP_M6_SRC/DST/AMT (CC 82-84)
+SP_LFO2_DEPTH (CC 85)   SP_LFO_SYNC (CC 86)   SP_LFO2_SYNC (CC 87)
 ```
-Source = param * 4 (0..4); destination = param * 6 (0..6); amount = (param-0.5)*2.
+Source = `round(param * 6)` (0..6); destination = `round(param * 8)` (0..8);
+amount = `(param - 0.5) * 2` (bipolar). Duplicate source→destination cables are
+rejected by the editor (the firmware just sums slots regardless).
 
 ## Roadmap
-- Tempo-synced LFO/env rates.
-- Per-voice sources (velocity, key-track) -> destination amounts.
+- Tempo-synced envelope rates (LFO rates already sync).
 - Let the Generative mode's seed also wire matrix slots.

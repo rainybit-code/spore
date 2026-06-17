@@ -51,9 +51,10 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 - 💡 More modes are easy — implement `IMode` (`modes/mode.h`) and add to the array
   in `main.cpp`. Candidates: drone/oscillator bank, resonator, wavefolder,
   sample looper.
-- 💡 **Mod routing matrix** — make source→destination→depth assignments data-driven
-  (extend `config/params.h`) so any input (knob/sensor/LFO/wireless) can drive any
-  parameter without code changes.
+- ✅ **Mod routing matrix** — 6 source→destination→amount slots (LFO1/LFO2/Random/
+  Sensor + per-voice Velocity/Key → cutoff/pitch/scan/drive/sub/FM/amp/LFO rates).
+  See [`MODULATION.md`](MODULATION.md). 💡 still open: let a wireless source and the
+  Generative seed wire slots too.
 - 💡 **Granular v2** — stereo grains, panning spread, reverse grains, pitch-quantize
   to a scale, grain-density envelope.
 - 💡 **Generative v2** — Euclidean rhythm engine, probabilistic gates, multiple
@@ -63,11 +64,16 @@ Legend: ✅ done · 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferr
 
 Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 
-- ✅ **Live param control over CC** — the pedal is a USB MIDI device; CC 20–31 drive
-  the live knob values (soft-takeover). Built in firmware (`io/midi_in.h`).
-- ◐ **WebMIDI editor ("Propagator")** — separate repo `propagator-web` (static,
-  localhost now / GitHub Pages later). v1 done: live CC control of the 6 mode + 6 FX
-  knobs, mode/FX toggles, tempo beat. Chromium only; SysEx needs https/localhost.
+- ✅ **Live param control over CC** — the pedal is a USB MIDI device; CC 20–87 drive
+  the live values (mode/FX knobs with soft-takeover + the full synth panel). Built in
+  firmware (`io/midi_in.h`).
+- ✅ **MIDI clock / tempo sync** — local clock that free-runs and locks to incoming
+  MIDI clock; drives the tempo-synced delay and clock-synced LFO rates
+  (`MIDI_PROTOCOL.md` §1a).
+- ✅ **WebMIDI editor ("Propagator")** — separate repo `propagator` (live on GitHub
+  Pages). Full synth editor (engine/wavetable, ADSR graph, LFO1/2, 6-slot patchbay,
+  step sequencer, tempo/clock) plus in-browser firmware flashing (WebUSB DFU).
+  Chromium only; needs https/localhost.
 - 🔜 **2-way sync (SysEx)** — device identify + full patch dump/load so the UI
   mirrors the pedal. Needs the central `Patch` store (see mod-matrix idea above).
 - 🔜 **Preset librarian** — patches saved in the browser (JSON/localStorage) **and**
@@ -117,7 +123,7 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 ## Memory / boot layout — parked until flash gets tight
 
 Currently `APP_TYPE = BOOT_NONE`: the app runs from the **128 KB internal flash**
-(~84% today — delay + reverb only cost ~2 KB of flash because ReverbSc's big
+(~92% today — delay + reverb only cost ~2 KB of flash because ReverbSc's big
 buffer lives in SDRAM). Keep it this way until code actually outgrows 128 KB — no
 bootloader, simplest flashing. Note: **preset-save does NOT require leaving
 internal flash** (`PersistentStorage` keeps *data* in QSPI regardless of where
