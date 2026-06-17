@@ -24,6 +24,7 @@ struct ModContext {
   const float*   knob;     // 6 latched MODE-layer knob values (0..1), see io/knobs.h
                            // -- use instead of hw.GetKnobValue so the FX shift-layer
                            //    doesn't disturb mode params. Index with KNOB_1..KNOB_6.
+  float          tempoBpm; // current clock tempo (local or MIDI), for tempo-synced LFOs
 };
 
 class IMode {

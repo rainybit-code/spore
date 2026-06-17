@@ -120,7 +120,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
 
   // Mode params from the (latched) MODE layer.
   IMode*     m = g_modes[g_active];
-  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE)};
+  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE), g_clock.Bpm()};
   m->Control(hw, ctx);
 
   if (g_bypass) {

@@ -89,13 +89,13 @@ class SynthMode : public IMode {
     // LFO1 + LFO2 are pure matrix sources now (route them via the patchbay).
     // Their rate can itself be a destination (modulated by last block's mod).
     lfo_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO_SHAPE] * 3.99f), 0, 3)]);
-    lfo_.SetFreq(daisysp::fmap(p.v[SP_LFO_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP) *
+    lfo_.SetFreq(LfoHz(p.v[SP_LFO_RATE], p.v[SP_LFO_SYNC], ctx.tempoBpm) *
                  daisysp::fclamp(1.0f + rateMod1_ * 1.5f, 0.05f, 8.0f));
     float lfo = lfo_.Process();
     float depth1 = daisysp::fclamp(p.v[SP_LFO_DEPTH] + lfoKnob, 0.0f, 1.0f);   // LFO1 master depth
 
     lfo2_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO2_SHAPE] * 3.99f), 0, 3)]);
-    lfo2_.SetFreq(daisysp::fmap(p.v[SP_LFO2_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP) *
+    lfo2_.SetFreq(LfoHz(p.v[SP_LFO2_RATE], p.v[SP_LFO2_SYNC], ctx.tempoBpm) *
                   daisysp::fclamp(1.0f + rateMod2_ * 1.5f, 0.05f, 8.0f));
     float lfo2 = lfo2_.Process();
 
@@ -199,6 +199,13 @@ class SynthMode : public IMode {
  private:
   static int clampi(int x, int lo, int hi) { return x < lo ? lo : (x > hi ? hi : x); }
   static float clamp01(float x) { return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x); }
+  // LFO frequency: free Hz, or locked to the clock tempo at a musical division.
+  static float LfoHz(float rateParam, float syncParam, float bpm) {
+    int s = clampi(static_cast<int>(syncParam * 5.99f), 0, 5);   // 0 free / 1..5 divisions
+    if (s == 0) return daisysp::fmap(rateParam, 0.05f, 18.0f, daisysp::Mapping::EXP);
+    static const float kCyclesPerBeat[5] = {0.25f, 0.5f, 1.0f, 2.0f, 4.0f};  // 1/1 1/2 1/4 1/8 1/16
+    return (bpm / 60.0f) * kCyclesPerBeat[s - 1];
+  }
 
   Voice v_[kVoices];
   daisysp::Oscillator lfo_, lfo2_;
