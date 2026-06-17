@@ -59,6 +59,8 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n >= params::midi::kCcSynthBase &&
                  n < params::midi::kCcSynthBase + SP_COUNT)
           g_synthParams.v[n - params::midi::kCcSynthBase] = v;
+        else if (n == params::midi::kCcSysReboot && cc.value >= 64)
+          daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
       } break;
       default:
         break;
