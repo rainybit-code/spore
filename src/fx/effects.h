@@ -40,6 +40,7 @@ class GlobalFx {
     fb_ = 0.0f;
     tone_coef_ = 1.0f;
     mode_ = OFF;
+    wet_ramp_ = 1.0f;
     lp_l_ = lp_r_ = 0.0f;
     s_fx_del_l.Init();
     s_fx_del_r.Init();
@@ -48,7 +49,17 @@ class GlobalFx {
     reverb_.SetLpFreq(12000.0f);
   }
 
-  void SetMode(Mode m) { mode_ = m; }
+  void SetMode(Mode m) {
+    if (m == mode_) return;
+    // Entering delay: wipe the SDRAM buffer so stale content can't screech out.
+    if (m == DELAY) {
+      s_fx_del_l.Reset();
+      s_fx_del_r.Reset();
+      lp_l_ = lp_r_ = 0.0f;
+    }
+    wet_ramp_ = 0.0f;   // fade the newly-engaged effect in from silence (~30 ms)
+    mode_ = m;
+  }
   Mode GetMode() const { return mode_; }
 
   // All inputs are normalized knob values (0..1); mapped to ranges here.
@@ -80,7 +91,13 @@ class GlobalFx {
   // In-place stereo process.
   void Process(float* l, float* r, size_t size) {
     if (mode_ == OFF) return;
+    const float ramp_inc = 1.0f / (0.03f * sr_);   // ~30 ms wet fade-in on engage
     for (size_t i = 0; i < size; ++i) {
+      if (wet_ramp_ < 1.0f) {
+        wet_ramp_ += ramp_inc;
+        if (wet_ramp_ > 1.0f) wet_ramp_ = 1.0f;
+      }
+      const float wmix = mix_ * wet_ramp_;   // ramped wet level avoids the engage transient
       float dry_l = l[i], dry_r = r[i];
       if (mode_ == DELAY) {
         float d_l = s_fx_del_l.Read();
@@ -90,13 +107,13 @@ class GlobalFx {
         lp_r_ += tone_coef_ * (d_r - lp_r_);
         s_fx_del_l.Write(dry_l + lp_l_ * fb_);
         s_fx_del_r.Write(dry_r + lp_r_ * fb_);
-        l[i] = dry_l * (1.0f - mix_) + d_l * mix_;
-        r[i] = dry_r * (1.0f - mix_) + d_r * mix_;
+        l[i] = dry_l * (1.0f - wmix) + d_l * wmix;
+        r[i] = dry_r * (1.0f - wmix) + d_r * wmix;
       } else {  // REVERB
         float w_l, w_r;
         reverb_.Process(dry_l, dry_r, &w_l, &w_r);
-        l[i] = dry_l * (1.0f - mix_) + w_l * mix_;
-        r[i] = dry_r * (1.0f - mix_) + w_r * mix_;
+        l[i] = dry_l * (1.0f - wmix) + w_l * wmix;
+        r[i] = dry_r * (1.0f - wmix) + w_r * wmix;
       }
     }
   }
@@ -115,6 +132,7 @@ class GlobalFx {
   float fb_;
   float tone_coef_;
   float lp_l_, lp_r_;
+  float wet_ramp_;   // 0..1 wet fade-in on engage (set to 0 by SetMode on a change)
   Mode  mode_;
 };
 
