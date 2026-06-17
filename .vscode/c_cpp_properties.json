@@ -9,6 +9,8 @@
         "${workspaceFolder}/lib/libDaisy/Drivers/CMSIS/Include",
         "${workspaceFolder}/lib/libDaisy/Drivers/CMSIS/Device/ST/STM32H7xx/Include",
         "${workspaceFolder}/lib/libDaisy/Drivers/STM32H7xx_HAL_Driver/Inc",
+        "${workspaceFolder}/lib/libDaisy/src/usbd",
+        "${workspaceFolder}/lib/libDaisy/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
         "${workspaceFolder}/lib/DaisySP/Source"
       ],
       "defines": ["STM32H750xx", "CORE_CM7", "USE_HAL_DRIVER", "ARM_MATH_CM7"],

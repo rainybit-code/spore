@@ -5,7 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
-- Custom USB vendor/product ID and device name.
+- USB device name: the pedal now enumerates as **"Spore"** (manufacturer "rainybit")
+  instead of "Daisy Seed Built In", via a vendored `src/usb_identity.c` descriptor
+  override. VID/PID kept at the stock Daisy/STM values (a real custom VID/PID is a
+  one-line edit there, deferred until productization).
 
 <!--
 Releasing:

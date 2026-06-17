@@ -13,6 +13,11 @@ USE_DAISYSP_LGPL = 1
 # (All mode/io/mod code is header-only and pulled in via main.cpp.)
 CPP_SOURCES = src/main.cpp src/hothouse.cpp
 
+# USB identity override (enumerate as "Spore"): a copy of libDaisy's usbd_desc.c.
+# Linked before -ldaisy so its descriptor symbols win over the archive's copy. See
+# the header note in the file for how to set a real VID/PID before shipping a product.
+C_SOURCES += src/usb_identity.c
+
 # Header search root so "config/...", "io/...", "modes/...", "hothouse.h" resolve.
 C_INCLUDES = -Isrc
 
