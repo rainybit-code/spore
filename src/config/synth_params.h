@@ -31,13 +31,20 @@ enum SynthParam {
   SP_FM_RATIO,     // FM ratio (0..1 -> {0.5, 1, 2, 3})
   SP_FOLD,         // wavefold amount (digital grit)
   SP_WT_BANK,      // wavetable bank (0..1 -> Saw / Square / Organ / Vocal / Digital)
+  // --- tone shaping (electronic: stabs + gritty bass) ---
+  SP_DRIVE,        // pre-filter saturation amount (grit)
+  SP_FILTER,       // filter type (0..1 -> Svf clean / MoogLadder fat)
+  SP_UNISON,       // unison voices (0..1 -> 1..4 detuned osc, super-saw)
+  SP_SUB_OCT,      // sub octave (0..1 -> -1 / -2)
+  SP_SUB_WAVE,     // sub waveform (0..1 -> square / sine)
   SP_COUNT,
 };
 
 struct SynthParams {
   float v[SP_COUNT] = {0.25f, 0.40f, 0.70f, 0.30f, 0.50f, 0.30f, 0.00f, 0.60f, 0.66f,
                        0.30f, 0.00f, 0.00f, 0.33f, 0.60f,
-                       0.00f, 0.30f, 0.00f, 0.25f, 0.00f, 0.00f};
+                       0.00f, 0.30f, 0.00f, 0.25f, 0.00f, 0.00f,
+                       0.00f, 0.00f, 0.33f, 0.00f, 0.00f};
 };
 
 extern SynthParams g_synthParams;  // defined in main.cpp

@@ -96,7 +96,12 @@ class GenerativeMode : public IMode {
       voices_[i].subLvl  = 0.22f;
       voices_[i].fenvAmt = 0.0f;
       voices_[i].pitchMod = 1.0f;
-      voices_[i].flt_.SetRes(pRes_);
+      voices_[i].res        = pRes_;
+      voices_[i].drive      = pDrive_;
+      voices_[i].filterType = static_cast<float>(pFilter_);
+      voices_[i].uni        = static_cast<float>(pUni_);
+      voices_[i].subOct     = pSubOct_;
+      voices_[i].SetSubWave(pSubWave_);
     }
 
     // Schedule scheduled note-offs (the back half of each swell).
@@ -154,6 +159,12 @@ class GenerativeMode : public IMode {
     pFold_    = (rng_.Unipolar() < 0.3f) ? rng_.Unipolar() * 0.40f : 0.0f;
     pDetune_  = 0.003f + rng_.Unipolar() * 0.012f;
     pRes_     = 0.10f + rng_.Unipolar() * 0.30f;
+    pDrive_   = (rng_.Unipolar() < 0.5f) ? rng_.Unipolar() * 0.5f : 0.0f;   // sometimes gritty
+    pFilter_  = (rng_.Unipolar() < 0.5f) ? 0 : 1;                            // Svf or Moog
+    pUni_     = (rng_.Unipolar() < 0.6f) ? 1 : 2;                            // keep CPU sane
+    pSubOct_  = (rng_.Unipolar() < 0.5f) ? 0.5f : 0.25f;
+    pSubWave_ = (rng_.Unipolar() < 0.5f) ? daisysp::Oscillator::WAVE_POLYBLEP_SQUARE
+                                         : daisysp::Oscillator::WAVE_SIN;
   }
 
   // Seed a new note (sometimes a small chord) from the random walk.
@@ -225,6 +236,8 @@ class GenerativeMode : public IMode {
   int   pEngine_ = 0, pWave_ = daisysp::Oscillator::WAVE_POLYBLEP_SAW, pBank_ = 0;
   float pScan_ = 0.3f, pFmAmt_ = 0.0f, pFmRatio_ = 1.0f, pFold_ = 0.0f;
   float pDetune_ = 0.006f, pRes_ = 0.18f;
+  float pDrive_ = 0.0f, pSubOct_ = 0.5f;
+  int   pFilter_ = 0, pUni_ = 1, pSubWave_ = daisysp::Oscillator::WAVE_POLYBLEP_SQUARE;
 };
 
 }  // namespace synthbox

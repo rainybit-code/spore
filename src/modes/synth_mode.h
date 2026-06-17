@@ -44,7 +44,7 @@ class SynthMode : public IMode {
     int wf = waves[clampi(static_cast<int>(p.v[SP_WAVE] * 3.99f), 0, 3)];
 
     float cutoff = daisysp::fmap(ctx.knob[Hothouse::KNOB_1], kCutoffMinHz, kCutoffMaxHz, daisysp::Mapping::EXP);
-    float res = daisysp::fmap(ctx.knob[Hothouse::KNOB_2], 0.0f, 0.85f, daisysp::Mapping::LINEAR);
+    float res = ctx.knob[Hothouse::KNOB_2];   // 0..1; the Voice maps it per filter type
     float atk = daisysp::fmap(ctx.knob[Hothouse::KNOB_3], kAttackMinS, kAttackMaxS, daisysp::Mapping::EXP);
     float dec = daisysp::fmap(ctx.knob[Hothouse::KNOB_4], kDecayMinS, kDecayMaxS, daisysp::Mapping::EXP);
     float lfoKnob = ctx.knob[Hothouse::KNOB_5];
@@ -67,6 +67,14 @@ class SynthMode : public IMode {
     float fmRatio = ratios[clampi(static_cast<int>(p.v[SP_FM_RATIO] * 3.99f), 0, 3)];
     float fold = p.v[SP_FOLD];
     float wtBank = (float)clampi(static_cast<int>(p.v[SP_WT_BANK] * (kWtBanks - 1) + 0.5f), 0, kWtBanks - 1);
+
+    // ---- tone shaping ----
+    float drive = p.v[SP_DRIVE];
+    float filterType = p.v[SP_FILTER];
+    float uni = 1.0f + (float)clampi(static_cast<int>(p.v[SP_UNISON] * 3.0f + 0.5f), 0, 3);
+    float subOct = (p.v[SP_SUB_OCT] < 0.5f) ? 0.5f : 0.25f;
+    int subWave = (p.v[SP_SUB_WAVE] < 0.5f) ? daisysp::Oscillator::WAVE_POLYBLEP_SQUARE
+                                            : daisysp::Oscillator::WAVE_SIN;
     // Glide: SP_GLIDE -> portamento time (0..0.4s). Per-sample one-pole coefficient
     // toward the target pitch; ~0 time => coef 1 (instant).
     float gtime = daisysp::fmap(p.v[SP_GLIDE], 0.0f, 0.4f, daisysp::Mapping::EXP);
@@ -94,7 +102,12 @@ class SynthMode : public IMode {
       v_[i].amp_.SetDecayTime(dec);
       v_[i].amp_.SetSustainLevel(sus);
       v_[i].amp_.SetReleaseTime(rel);
-      v_[i].flt_.SetRes(res);
+      v_[i].res = res;
+      v_[i].drive = drive;
+      v_[i].filterType = filterType;
+      v_[i].uni = uni;
+      v_[i].subOct = subOct;
+      v_[i].SetSubWave(subWave);
       v_[i].cutoff = cutoff * cutMul;
       v_[i].detune = detune;
       v_[i].subLvl = subLvl;

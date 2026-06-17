@@ -17,6 +17,7 @@
 #include <cmath>
 
 #include "daisysp.h"
+#include "daisysp-lgpl.h"  // MoogLadder (fat 24 dB filter option)
 
 namespace synthbox {
 
@@ -93,16 +94,22 @@ inline float WaveFold(float x, float amt) {
 // ---- one generic voice ----
 class Voice {
  public:
+  static constexpr int kUni = 4;   // max unison oscillators (analog super-saw)
+
   void Init(float sr) {
     sr_ = sr;
-    osc_[0].Init(sr); osc_[1].Init(sr); sub_.Init(sr);
+    for (int i = 0; i < kUni; ++i) osc_[i].Init(sr);
+    sub_.Init(sr);
+    SetWave(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
     sub_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SQUARE);
     flt_.Init(sr);
+    mflt_.Init(sr);
     amp_.Init(sr);
     fenv_.Init(sr); fenv_.SetMin(0.0f); fenv_.SetMax(1.0f);
     fenv_.SetTime(daisysp::ADENV_SEG_ATTACK, 0.005f);
   }
-  void SetWave(int wf) { osc_[0].SetWaveform(wf); osc_[1].SetWaveform(wf); }
+  void SetWave(int wf) { for (int i = 0; i < kUni; ++i) osc_[i].SetWaveform(wf); }
+  void SetSubWave(int wf) { sub_.SetWaveform(wf); }
   void SetFenvDecay(float t) { fenv_.SetTime(daisysp::ADENV_SEG_DECAY, t); }
   void SetGlide(float coef) { glideCoef_ = coef; }  // 1 = instant, <1 = portamento
 
@@ -121,6 +128,8 @@ class Voice {
   float cutoff = 1000.f, detune = 0.006f, subLvl = 0.4f, fenvAmt = 0.5f, pitchMod = 1.f;
   // digital engine (per-block): engine<0.5 = analog, else wavetable
   float engine = 0.f, wtPos = 0.3f, fmAmt = 0.f, fmRatio = 1.f, fold = 0.f, wtBank = 0.f;
+  // tone shaping: drive (pre-filter saturation), resonance, filter type, unison, sub octave
+  float drive = 0.f, res = 0.3f, filterType = 0.f, uni = 2.f, subOct = 0.5f;
 
   inline float Process() {
     freq_ += (targetFreq_ - freq_) * glideCoef_;   // portamento toward the target pitch
@@ -129,13 +138,19 @@ class Voice {
     float fe = fenv_.Process();
     float vb = 0.4f + 0.6f * vel_;
     float fc = daisysp::fclamp(cutoff * vb * (1.0f + fenvAmt * 5.0f * fe), 20.0f, 16000.0f);
-    flt_.SetFreq(fc);
-    sub_.SetFreq(f * 0.5f);
+    sub_.SetFreq(f * subOct);
     float sig;
-    if (engine < 0.5f) {                            // ---- analog: 2 detuned osc + sub ----
-      osc_[0].SetFreq(f * (1.0f - detune));
-      osc_[1].SetFreq(f * (1.0f + detune));
-      sig = (osc_[0].Process() + osc_[1].Process()) * 0.5f + sub_.Process() * subLvl;
+    if (engine < 0.5f) {                            // ---- analog: super-saw unison + sub ----
+      int u = (int)(uni + 0.5f);
+      if (u < 1) u = 1; else if (u > kUni) u = kUni;
+      sig = 0.0f;
+      for (int i = 0; i < u; ++i) {
+        float off = (u > 1) ? ((float)i / (u - 1) - 0.5f) * 2.0f * detune : 0.0f;
+        osc_[i].SetFreq(f * (1.0f + off));
+        sig += osc_[i].Process();
+      }
+      sig *= 1.0f / (float)u;
+      sig += sub_.Process() * subLvl;
     } else {                                        // ---- wavetable: scan + FM + fold ----
       float pinc = f / sr_;
       wtPhase_ += pinc; wtPhase_ -= floorf(wtPhase_);
@@ -149,15 +164,31 @@ class Voice {
       if (bank < 0) bank = 0; else if (bank >= kWtBanks) bank = kWtBanks - 1;
       sig = WaveFold(WtSample(bank, ph, wtPos), fold) + sub_.Process() * subLvl;
     }
-    flt_.Process(sig * 0.6f);
-    return flt_.Low() * env * vel_;
+    // Pre-filter saturation -> grit (and dirties the filter for fat/acid tones).
+    float drv = Saturate(sig, drive) * 0.6f;
+    if (filterType < 0.5f) {                         // clean 2-pole Svf
+      flt_.SetFreq(fc); flt_.SetRes(res * 0.85f);
+      flt_.Process(drv);
+      return flt_.Low() * env * vel_;
+    }
+    mflt_.SetFreq(fc); mflt_.SetRes(res * 0.95f);    // fat 4-pole MoogLadder
+    return mflt_.Process(drv) * env * vel_;
   }
 
-  daisysp::Adsr amp_;
-  daisysp::Svf  flt_;
+  daisysp::Adsr amp_;   // public: modes set ADSR times directly
 
  private:
-  daisysp::Oscillator osc_[2], sub_;
+  // Fast bounded tanh-ish waveshaper (Pade approx, clamped so it saturates to +/-1).
+  static inline float Saturate(float x, float d) {
+    if (d <= 0.001f) return x;
+    float xk = x * (1.0f + d * 8.0f);
+    if (xk > 3.0f) xk = 3.0f; else if (xk < -3.0f) xk = -3.0f;
+    return xk * (27.0f + xk * xk) / (27.0f + 9.0f * xk * xk);
+  }
+
+  daisysp::Oscillator osc_[kUni], sub_;
+  daisysp::Svf        flt_;
+  daisysp::MoogLadder mflt_;
   daisysp::AdEnv      fenv_;
   float note_ = 0.f, freq_ = 220.f, targetFreq_ = 220.f, vel_ = 0.8f;
   float glideCoef_ = 1.0f;
