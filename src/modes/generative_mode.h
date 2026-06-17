@@ -44,6 +44,7 @@ class GenerativeMode : public IMode {
     }
     rng_.Init();
     walk_.Init(&rng_);
+    RollPatch();   // pick the starting timbre from the RNG
     s_gen_reverb.Init(sample_rate);
     s_gen_reverb.SetFeedback(0.9f);
     s_gen_reverb.SetLpFreq(8000.0f);
@@ -53,7 +54,7 @@ class GenerativeMode : public IMode {
     revMix_ = 0.6f;
   }
 
-  void Action() override { walk_.Init(&rng_); timer_ = 0.0f; }  // re-seed
+  void Action() override { walk_.Init(&rng_); RollPatch(); timer_ = 0.0f; }  // re-seed: new walk + timbre
 
   void Control(Hothouse& hw, ModContext& ctx) override {
     quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
@@ -78,16 +79,24 @@ class GenerativeMode : public IMode {
     s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);
     s_gen_reverb.SetLpFreq(4000.0f + k_tone * 8000.0f);
 
-    // Per-block voice params: gentle ambient lowpass, no filter-env zap, soft body.
-    const float det = 0.004f + drift_ * 0.012f;
+    // Per-block voice params come from the seeded patch (timbre) + macro knobs.
+    // Scan drifts slowly so a wavetable patch keeps evolving; drift widens detune.
+    float scan = daisysp::fclamp(pScan_ + drift_ * 0.3f * ctx.mod.Lfo2(), 0.0f, 1.0f);
+    const float det = pDetune_ + drift_ * 0.008f;
     for (int i = 0; i < kVoices; ++i) {
-      voices_[i].engine  = 0.0f;        // analog (saws) -- swap to wavetable later if wanted
+      voices_[i].SetWave(pWave_);
+      voices_[i].engine  = static_cast<float>(pEngine_);
+      voices_[i].wtBank  = static_cast<float>(pBank_);
+      voices_[i].wtPos   = scan;
+      voices_[i].fmAmt   = pFmAmt_;
+      voices_[i].fmRatio = pFmRatio_;
+      voices_[i].fold    = pFold_;
       voices_[i].cutoff  = cutoff_;
       voices_[i].detune  = det;
       voices_[i].subLvl  = 0.22f;
       voices_[i].fenvAmt = 0.0f;
       voices_[i].pitchMod = 1.0f;
-      voices_[i].flt_.SetRes(0.18f);
+      voices_[i].flt_.SetRes(pRes_);
     }
 
     // Schedule scheduled note-offs (the back half of each swell).
@@ -128,6 +137,25 @@ class GenerativeMode : public IMode {
   }
 
  private:
+  // Roll a whole timbre from the RNG: which engine + waveform/bank + the digital
+  // params + detune/resonance. Called at Init and on re-seed (FS2), so each seed
+  // is a fresh sonic landscape that the macro knobs then play on top of.
+  void RollPatch() {
+    static const int kWaves[3] = {daisysp::Oscillator::WAVE_POLYBLEP_SAW,
+                                  daisysp::Oscillator::WAVE_POLYBLEP_TRI,
+                                  daisysp::Oscillator::WAVE_POLYBLEP_SQUARE};
+    static const float kRatios[4] = {0.5f, 1.0f, 2.0f, 3.0f};
+    pEngine_  = (rng_.Unipolar() < 0.5f) ? 0 : 1;                 // analog or wavetable
+    pWave_    = kWaves[static_cast<int>(rng_.Unipolar() * 2.999f)];
+    pBank_    = static_cast<int>(rng_.Unipolar() * 4.999f);       // wavetable bank 0..4
+    pScan_    = rng_.Unipolar();
+    pFmAmt_   = (rng_.Unipolar() < 0.4f) ? rng_.Unipolar() * 0.30f : 0.0f;
+    pFmRatio_ = kRatios[static_cast<int>(rng_.Unipolar() * 3.999f)];
+    pFold_    = (rng_.Unipolar() < 0.3f) ? rng_.Unipolar() * 0.40f : 0.0f;
+    pDetune_  = 0.003f + rng_.Unipolar() * 0.012f;
+    pRes_     = 0.10f + rng_.Unipolar() * 0.30f;
+  }
+
   // Seed a new note (sometimes a small chord) from the random walk.
   void SeedEvent() {
     const float w = walk_.Process(0.25f + drift_ * 0.5f);   // -1..1
@@ -192,6 +220,11 @@ class GenerativeMode : public IMode {
   float bpm_ = 50.0f, range_ = 12.0f, density_ = 0.4f, drift_ = 0.3f;
   float cutoff_ = 1200.0f, revMix_ = 0.6f, center_ = 48.0f;
   int   quantize_ = 0, steal_ = 0;
+
+  // seeded patch (timbre) — rolled from the RNG, persists until the next re-seed
+  int   pEngine_ = 0, pWave_ = daisysp::Oscillator::WAVE_POLYBLEP_SAW, pBank_ = 0;
+  float pScan_ = 0.3f, pFmAmt_ = 0.0f, pFmRatio_ = 1.0f, pFold_ = 0.0f;
+  float pDetune_ = 0.006f, pRes_ = 0.18f;
 };
 
 }  // namespace synthbox
