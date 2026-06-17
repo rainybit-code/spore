@@ -85,7 +85,7 @@ src/
   io/                 controls, knobs (shift-layer soft-takeover), midi_in,
                       clock (MIDI clock), sensors (analog ADC)
 lib/                  libDaisy + DaisySP (git submodules)
-scripts/              build / flash / build-libs / clean / monitor (.sh + .ps1)
+scripts/              build / flash / build-libs / clean / release (.sh + .ps1)
 pd/                   Pure Data sketches for prototyping DSP ideas
 ```
 
