@@ -78,11 +78,14 @@ browser or an external MIDI source can be master.
 Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
 (`SP_LFO_SYNC` / `SP_LFO2_SYNC`).
 
-## 2. Device handshake — SysEx 🔜
+## 2. Device handshake — SysEx ◐ (identify/version ✅)
 
-- `0x01` **Identify request** (web→pedal), no payload.
-- `0x41` **Identify reply** (pedal→web): firmware name + version + protocol rev +
-  capabilities (num modes, num knobs, sample slots, free QSPI bytes).
+- `0x01` **Identify request** (web→pedal), no payload: `F0 7D 01 F7`.
+- `0x41` **Identify reply** (pedal→web): `F0 7D 41 <version ASCII> F7` — the firmware
+  version (semver, no leading `v`), e.g. `F0 7D 41 30 2E 31 2E 30 F7` = `"0.1.0"`.
+  Propagator uses this to flag when a newer release is available (pulsing the DFU
+  button). 🔜 Fuller capabilities (protocol rev, mode/knob/slot counts, free QSPI)
+  can extend the same reply later.
 
 ## 3. Full patch dump / load — SysEx 🔜 (Phase 2 → enables presets)
 

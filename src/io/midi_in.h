@@ -79,6 +79,23 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n == params::midi::kCcSysReboot && cc.value >= 64)
           daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
       } break;
+      case daisy::SystemCommon: {
+        if (msg.sc_type != daisy::SystemExclusive) break;
+        // Identify request `F0 7D 01 F7` -> reply `F0 7D 41 <version ascii> F7`.
+        // (0x7D = the non-commercial/educational manufacturer ID.) libDaisy may or
+        // may not keep the 0xF0 framing in data[], so accept either.
+        auto sx = msg.AsSystemExclusive();
+        int  i  = (sx.length > 0 && sx.data[0] == 0xF0) ? 1 : 0;
+        if (sx.length >= i + 2 && sx.data[i] == 0x7D && sx.data[i + 1] == 0x01) {
+          uint8_t reply[32];
+          int     j  = 0;
+          reply[j++] = 0xF0; reply[j++] = 0x7D; reply[j++] = 0x41;   // identify reply
+          for (const char* p = params::kFwVersion; *p && j < 30; ++p)
+            reply[j++] = static_cast<uint8_t>(*p) & 0x7F;
+          reply[j++] = 0xF7;
+          midi.SendMessage(reply, j);
+        }
+      } break;
       default:
         break;
     }

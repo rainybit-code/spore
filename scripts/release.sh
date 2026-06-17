@@ -28,6 +28,11 @@ awk -v ver="$ver" -v date="$date" '
 ' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
 
 git add CHANGELOG.md
+# keep the firmware version constant in sync with the tag (no-op outside the firmware repo)
+if [ -f src/config/params.h ]; then
+  sed -i -E "s/(kFwVersion\[\] = \")[^\"]*\"/\1${ver#v}\"/" src/config/params.h
+  git add src/config/params.h
+fi
 git commit -m "release $ver"
 git tag -a "$ver" -m "$ver"
 echo "Tagged $ver — pushing main + tag…"

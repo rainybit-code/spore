@@ -27,6 +27,14 @@ $new = [regex]::Replace($cl, '(?m)^## \[Unreleased\]\r?\n', "## [Unreleased]`n`n
 Set-Content CHANGELOG.md $new -NoNewline -Encoding utf8
 
 git add CHANGELOG.md
+# keep the firmware version constant in sync with the tag (no-op outside the firmware repo)
+if (Test-Path src/config/params.h) {
+  $noV = $Version.TrimStart('v')
+  $ph = Get-Content src/config/params.h -Raw
+  $ph = [regex]::Replace($ph, '(kFwVersion\[\] = ")[^"]*"', "`${1}$noV`"")
+  Set-Content src/config/params.h $ph -NoNewline -Encoding utf8
+  git add src/config/params.h
+}
 git commit -m "release $Version"
 git tag -a $Version -m $Version
 Write-Host "Tagged $Version - pushing main + tag..."
