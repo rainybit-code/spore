@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1020" font-family="ui-monospace, 'Cascadia Mono', Consolas, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5bd0e6"/>
+    </marker>
+    <marker id="arrowHeat" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#ff7c3d"/>
+    </marker>
+    <style>
+      .bg    { fill:#0b2238; }
+      .box   { fill:#0e2c47; stroke:#2f7d96; stroke-width:1.5; rx:10; }
+      .bar   { fill:#0a1c2e; stroke:#2f7d96; stroke-width:1.5; rx:10; }
+      .synth { stroke:#93f06b; }
+      .gran  { stroke:#5bd0e6; }
+      .gen   { stroke:#c489ff; }
+      .fx    { stroke:#ff7c3d; }
+      .t     { fill:#eaf6f4; font-size:13px; }
+      .h     { fill:#eaf6f4; font-size:15px; font-weight:700; }
+      .s     { fill:#9dc3d4; font-size:11.5px; }
+      .tag   { fill:#0a1620; font-size:11px; font-weight:700; }
+      .wire  { stroke:#5bd0e6; stroke-width:1.6; fill:none; }
+      .wireH { stroke:#ff7c3d; stroke-width:2; fill:none; }
+      .dash  { stroke:#5bd0e6; stroke-width:1.3; fill:none; stroke-dasharray:4 4; }
+      .title { fill:#93f06b; font-size:20px; font-weight:700; }
+      .sub   { fill:#9dc3d4; font-size:12px; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="1020"/>
+  <text class="title" x="30" y="38">Daisy + Hothouse — firmware signal &amp; control map</text>
+  <text class="sub" x="30" y="58">48-sample blocks @ 48 kHz · one mode active at a time · global FX after the mode · USB-MIDI + 6 knobs / 3 toggles / 2 footswitches / analog sensor</text>
+
+  <!-- ============ CONTROL INPUTS ============ -->
+  <g>
+    <rect class="box" x="30"  y="78" width="150" height="46" rx="10"/>
+    <text class="t" x="46" y="98">6 Knobs</text><text class="s" x="46" y="114">shift: MODE | FX</text>
+
+    <rect class="box" x="196" y="78" width="150" height="46" rx="10"/>
+    <text class="t" x="212" y="98">3 Toggles</text><text class="s" x="212" y="114">mode · var · FX</text>
+
+    <rect class="box" x="362" y="78" width="170" height="46" rx="10"/>
+    <text class="t" x="378" y="98">2 Footswitches</text><text class="s" x="378" y="114">bypass · action · DFU</text>
+
+    <rect class="box" x="548" y="78" width="160" height="46" rx="10"/>
+    <text class="t" x="564" y="98">Analog sensor</text><text class="s" x="564" y="114">light / pressure (ADC)</text>
+
+    <rect class="box" x="724" y="78" width="446" height="46" rx="10"/>
+    <text class="t" x="740" y="98">USB-MIDI in</text>
+    <text class="s" x="740" y="114">notes → active mode · CC 16/17 mode+FX · CC 20-31 knobs · CC 40-59 synth · CC 119 → DFU</text>
+  </g>
+
+  <!-- inputs -> control plane -->
+  <path class="wire" d="M105 124 L105 150" marker-end="url(#arrow)"/>
+  <path class="wire" d="M271 124 L271 150" marker-end="url(#arrow)"/>
+  <path class="wire" d="M447 124 L447 150" marker-end="url(#arrow)"/>
+  <path class="wire" d="M628 124 L628 150" marker-end="url(#arrow)"/>
+  <path class="wire" d="M947 124 L947 150" marker-end="url(#arrow)"/>
+
+  <!-- ============ CONTROL PLANE ============ -->
+  <rect class="bar" x="30" y="152" width="1140" height="60" rx="10"/>
+  <text class="h" x="46" y="178">CONTROL PLANE  ·  main.cpp (per block)</text>
+  <text class="s" x="46" y="198">ProcessAllControls → select mode (CC16 / moved Toggle1, boots Synth) + FX (CC17 / Toggle3, boots off) · FS1 tap=bypass / hold=edit-FX · FS2=action · shift-layer routes knobs to MODE or FX</text>
+
+  <!-- control plane -> modulation -->
+  <path class="wire" d="M600 212 L600 238" marker-end="url(#arrow)"/>
+
+  <!-- ============ MODULATION ============ -->
+  <rect class="bar" x="30" y="240" width="1140" height="44" rx="10"/>
+  <text class="t" x="46" y="267">MODULATION SOURCES  ·  ModEngine: hardware RNG → LFO1 / LFO2 / sample&amp;hold   ·   AnalogSensors: light / pressure   →   feed the active mode's Control()</text>
+
+  <!-- modulation -> modes -->
+  <path class="dash" d="M210 284 L210 320" marker-end="url(#arrow)"/>
+  <path class="dash" d="M610 284 L610 320" marker-end="url(#arrow)"/>
+  <path class="dash" d="M960 284 L960 320" marker-end="url(#arrow)"/>
+
+  <!-- ============ MODES (one active) ============ -->
+  <text class="s" x="30" y="312">MODE ENGINES  —  exactly one runs (Toggle 1 / CC 16)</text>
+
+  <!-- SYNTH -->
+  <rect class="box synth" x="30" y="320" width="370" height="250" rx="10"/>
+  <rect x="42" y="332" width="92" height="20" rx="5" fill="#93f06b"/>
+  <text class="tag" x="50" y="347">1 · SYNTH</text>
+  <text class="s" x="146" y="347">USB-MIDI · poly 1–6 voices</text>
+  <text class="t" x="46" y="378">per voice (parallel, summed → stereo):</text>
+  <text class="s" x="56" y="398">engine ① analog: 2 detuned osc + sub</text>
+  <text class="s" x="56" y="416">engine ② wavetable: scan + FM + fold</text>
+  <text class="s" x="56" y="434">           5 banks (Saw/Sqr/Org/Voc/Dig)</text>
+  <text class="t" x="46" y="458">  ↓  Svf low-pass filter</text>
+  <text class="t" x="46" y="478">  ↓  Amp ADSR  ×  Filter AdEnv → cutoff</text>
+  <text class="t" x="46" y="498">  ↓  velocity → level + brightness</text>
+  <text class="t" x="46" y="518">  ↓  stereo pan (width)</text>
+  <text class="s" x="46" y="540">global LFO → vibrato / filter / tremolo</text>
+  <text class="s" x="46" y="558">glide (portamento) · runtime voice count</text>
+
+  <!-- GRANULAR -->
+  <rect class="box gran" x="418" y="320" width="320" height="250" rx="10"/>
+  <rect x="430" y="332" width="112" height="20" rx="5" fill="#5bd0e6"/>
+  <text class="tag" x="438" y="347">2 · GRANULAR</text>
+  <text class="s" x="552" y="347">uses AUDIO IN</text>
+  <text class="t" x="432" y="378">record input → SDRAM ring buffer</text>
+  <text class="t" x="432" y="402">spray overlapping grains:</text>
+  <text class="s" x="442" y="422">random position (scatter)</text>
+  <text class="s" x="442" y="440">pitch ± spread · Hann window</text>
+  <text class="t" x="432" y="466">sum grains → wet</text>
+  <text class="t" x="432" y="490">dry / wet mix → stereo</text>
+  <text class="s" x="432" y="520">FS2 = freeze (stop recording,</text>
+  <text class="s" x="442" y="538">keep spraying the captured buffer)</text>
+
+  <!-- GENERATIVE -->
+  <rect class="box gen" x="756" y="320" width="414" height="250" rx="10"/>
+  <rect x="768" y="332" width="128" height="20" rx="5" fill="#c489ff"/>
+  <text class="tag" x="776" y="347">3 · GENERATIVE</text>
+  <text class="s" x="906" y="347">self-playing ambient</text>
+  <text class="t" x="770" y="378">slow clock (≈20–90 BPM)</text>
+  <text class="t" x="770" y="400">  ↓ random-walk pitch → scale quantize</text>
+  <text class="t" x="770" y="422">  ↓ sometimes a chord (root/5th/3rd)</text>
+  <text class="t" x="770" y="448">5-voice pool — per voice:</text>
+  <text class="s" x="780" y="468">2 detuned saws → Svf LP</text>
+  <text class="s" x="780" y="486">→ long attack/decay swell → pan</text>
+  <text class="t" x="770" y="512">  ↓ dedicated ReverbSc (big, lush)</text>
+  <text class="s" x="770" y="540">drift sways filter + detune</text>
+  <text class="s" x="770" y="558">FS2 = re-seed the walk</text>
+
+  <!-- modes converge to the active-mode slot -->
+  <path class="wire" d="M215 570 L215 612 L600 612 L600 636" marker-end="url(#arrow)"/>
+  <path class="wire" d="M578 570 L578 600 L600 600" />
+  <path class="wire" d="M963 570 L963 612 L600 612" />
+  <text class="s" x="620" y="606">only the active mode writes the bus</text>
+
+  <!-- ============ AUDIO SIGNAL PATH ============ -->
+  <text class="s" x="30" y="660">AUDIO PATH (stereo)</text>
+
+  <rect class="box" x="30" y="672" width="140" height="60" rx="10"/>
+  <text class="t" x="46" y="700">AUDIO IN</text><text class="s" x="46" y="718">L / R jack</text>
+
+  <rect class="box" x="250" y="672" width="190" height="60" rx="10"/>
+  <text class="t" x="266" y="700">ACTIVE MODE</text><text class="s" x="266" y="718">synth / gran / generative</text>
+
+  <rect class="box fx" x="520" y="672" width="250" height="60" rx="10"/>
+  <text class="t" x="536" y="698">GLOBAL FX</text>
+  <text class="s" x="536" y="718">off · delay (stereo+tone fb) · reverb</text>
+
+  <rect class="box" x="850" y="672" width="170" height="60" rx="10"/>
+  <text class="t" x="866" y="700">SAFETY LIMITER</text><text class="s" x="866" y="718">hard clamp ±1.0</text>
+
+  <rect class="box" x="1060" y="672" width="110" height="60" rx="10"/>
+  <text class="t" x="1076" y="700">AUDIO OUT</text><text class="s" x="1076" y="718">L / R</text>
+
+  <!-- audio path arrows -->
+  <path class="wire" d="M170 702 L250 702" marker-end="url(#arrow)"/>
+  <path class="wireH" d="M440 702 L520 702" marker-end="url(#arrowHeat)"/>
+  <path class="wireH" d="M770 702 L850 702" marker-end="url(#arrowHeat)"/>
+  <path class="wire" d="M1020 702 L1060 702" marker-end="url(#arrow)"/>
+
+  <!-- audio in feeds granular (mode reads input) -->
+  <path class="dash" d="M100 672 L100 540 L418 470" marker-end="url(#arrow)"/>
+  <text class="s" x="92" y="640">in → granular</text>
+
+  <!-- bypass -->
+  <path class="dash" d="M100 672 C 100 770, 1110 770, 1110 732" marker-end="url(#arrow)"/>
+  <text class="s" x="540" y="788">FS1 bypass: AUDIO IN routed straight to OUT (skips mode + FX)</text>
+
+  <!-- legend -->
+  <text class="s" x="30" y="836" fill="#9dc3d4">Legend:</text>
+  <line x1="92" y1="832" x2="122" y2="832" class="wire"/>
+  <text class="s" x="128" y="836">control / mono signal</text>
+  <line x1="280" y1="832" x2="310" y2="832" class="wireH"/>
+  <text class="s" x="316" y="836">main audio bus</text>
+  <line x1="440" y1="832" x2="470" y2="832" class="dash"/>
+  <text class="s" x="476" y="836">conditional / side route</text>
+  <text class="s" x="30" y="862" fill="#9dc3d4">Memory: ReverbSc + delay lines + grain buffer + generative reverb live in SDRAM; wavetable banks (5×8×512) in fast internal RAM.</text>
+  <text class="s" x="30" y="882" fill="#9dc3d4">Files: main.cpp (wiring) · modes/synth_mode.h · modes/granular_mode.h · modes/generative_mode.h · fx/effects.h · mod/modulation.h · io/*</text>
+</svg>
