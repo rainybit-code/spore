@@ -37,6 +37,12 @@ enum SynthParam {
   SP_UNISON,       // unison voices (0..1 -> 1..4 detuned osc, super-saw)
   SP_SUB_OCT,      // sub octave (0..1 -> -1 / -2)
   SP_SUB_WAVE,     // sub waveform (0..1 -> square / sine)
+  // --- modulation: LFO2 + 3-slot mod matrix ---
+  SP_LFO2_RATE,    // LFO2 rate
+  SP_LFO2_SHAPE,   // LFO2 shape (Sin / Tri / Saw / Sqr)
+  SP_M1_SRC, SP_M1_DST, SP_M1_AMT,   // slot 1: source / destination / bipolar amount
+  SP_M2_SRC, SP_M2_DST, SP_M2_AMT,   // slot 2
+  SP_M3_SRC, SP_M3_DST, SP_M3_AMT,   // slot 3
   SP_COUNT,
 };
 
@@ -44,7 +50,11 @@ struct SynthParams {
   float v[SP_COUNT] = {0.25f, 0.40f, 0.70f, 0.30f, 0.50f, 0.30f, 0.00f, 0.60f, 0.66f,
                        0.30f, 0.00f, 0.00f, 0.33f, 0.60f,
                        0.00f, 0.30f, 0.00f, 0.25f, 0.00f, 0.00f,
-                       0.00f, 0.00f, 0.33f, 0.00f, 0.00f};
+                       0.00f, 0.00f, 0.33f, 0.00f, 0.00f,
+                       0.30f, 0.00f,
+                       0.00f, 0.00f, 0.50f,
+                       0.00f, 0.00f, 0.50f,
+                       0.00f, 0.00f, 0.50f};
 };
 
 extern SynthParams g_synthParams;  // defined in main.cpp

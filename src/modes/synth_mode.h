@@ -30,7 +30,8 @@ class SynthMode : public IMode {
     sr_ = sample_rate;
     GenerateWavetables();   // fill all shared wavetable banks (once)
     for (int i = 0; i < kVoices; ++i) v_[i].Init(sample_rate);
-    lfo_.Init(sample_rate / params::audio::kBlockSize);  // LFO ticked once per block
+    lfo_.Init(sample_rate / params::audio::kBlockSize);   // LFOs ticked once per block
+    lfo2_.Init(sample_rate / params::audio::kBlockSize);
   }
 
   void Control(Hothouse& hw, ModContext& ctx) override {
@@ -94,6 +95,28 @@ class SynthMode : public IMode {
     float cutMul   = (dest == 2) ? (1.0f + lfo * depth * 0.9f) : 1.0f;
     trem_          = (dest == 3) ? (1.0f - depth * 0.5f * (0.5f - 0.5f * lfo)) : 1.0f;
 
+    // ---- LFO2 ----
+    lfo2_.SetWaveform(lshapes[clampi(static_cast<int>(p.v[SP_LFO2_SHAPE] * 3.99f), 0, 3)]);
+    lfo2_.SetFreq(daisysp::fmap(p.v[SP_LFO2_RATE], 0.05f, 18.0f, daisysp::Mapping::EXP));
+    float lfo2 = lfo2_.Process();
+
+    // ---- mod matrix: global sources -> destination offsets (applied to all voices) ----
+    float src[5] = {0.0f, lfo, lfo2, ctx.mod.Lfo1(), ctx.sensors.Light() * 2.0f - 1.0f};
+    float mod[7] = {0, 0, 0, 0, 0, 0, 0};   // cutoff/pitch/scan/drive/sub/fm/amp
+    const int kSrc[3] = {SP_M1_SRC, SP_M2_SRC, SP_M3_SRC};
+    const int kDst[3] = {SP_M1_DST, SP_M2_DST, SP_M3_DST};
+    const int kAmt[3] = {SP_M1_AMT, SP_M2_AMT, SP_M3_AMT};
+    for (int s = 0; s < 3; ++s) {
+      int si = clampi(static_cast<int>(p.v[kSrc[s]] * 4.99f), 0, 4);
+      if (si == 0) continue;   // Off
+      int di = clampi(static_cast<int>(p.v[kDst[s]] * 6.99f), 0, 6);
+      mod[di] += src[si] * (p.v[kAmt[s]] - 0.5f) * 2.0f;
+    }
+    cutMul   *= (1.0f + mod[0] * 0.9f);
+    pitchMul *= (1.0f + mod[1] * 0.06f);
+    trem_    *= daisysp::fclamp(1.0f + mod[6] * 0.5f, 0.0f, 1.5f);
+    float scanMod = mod[2] * 0.5f, driveMod = mod[3] * 0.5f, subMod = mod[4] * 0.5f, fmMod = mod[5] * 0.5f;
+
     for (int i = 0; i < kVoices; ++i) {
       v_[i].SetWave(wf);
       v_[i].SetGlide(gcoef);
@@ -103,19 +126,19 @@ class SynthMode : public IMode {
       v_[i].amp_.SetSustainLevel(sus);
       v_[i].amp_.SetReleaseTime(rel);
       v_[i].res = res;
-      v_[i].drive = drive;
+      v_[i].drive = clamp01(drive + driveMod);
       v_[i].filterType = filterType;
       v_[i].uni = uni;
       v_[i].subOct = subOct;
       v_[i].SetSubWave(subWave);
       v_[i].cutoff = cutoff * cutMul;
       v_[i].detune = detune;
-      v_[i].subLvl = subLvl;
+      v_[i].subLvl = clamp01(subLvl + subMod);
       v_[i].fenvAmt = fenvAmt;
       v_[i].pitchMod = pitchMul;
       v_[i].engine = engine;
-      v_[i].wtPos = wtPos;
-      v_[i].fmAmt = fmAmt;
+      v_[i].wtPos = clamp01(wtPos + scanMod);
+      v_[i].fmAmt = clamp01(fmAmt + fmMod);
       v_[i].fmRatio = fmRatio;
       v_[i].fold = fold;
       v_[i].wtBank = wtBank;
@@ -158,9 +181,10 @@ class SynthMode : public IMode {
 
  private:
   static int clampi(int x, int lo, int hi) { return x < lo ? lo : (x > hi ? hi : x); }
+  static float clamp01(float x) { return x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x); }
 
   Voice v_[kVoices];
-  daisysp::Oscillator lfo_;
+  daisysp::Oscillator lfo_, lfo2_;
   float panL_[kVoices] = {0}, panR_[kVoices] = {0};
   float sr_ = 48000.0f;
   float drive_ = 1.0f, spread_ = 0.6f, trem_ = 1.0f;
