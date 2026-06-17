@@ -12,9 +12,10 @@ instrument:
 matrix), a **tempo-synced** delay + clock, and **non-standard inputs** (analog sensor on
 a free ADC pin, optional I2C motion IMU).
 
-Configure it live from its companion browser editor, **Propagator** (separate repo —
-WebMIDI, no install). See [`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx
-contract the two share.
+Configure it live from its companion browser editor,
+**[Propagator](https://github.com/rainybit-code/propagator)** (WebMIDI, no install) —
+running at **<https://rainybit-code.github.io/propagator/>**. See
+[`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx contract the two share.
 
 > **Status:** experimental / work-in-progress. Builds clean with arm-none-eabi-gcc
 > 12.3.1 → `build/daisy_synth.bin`. Treat hardware behaviour as unverified until you've
