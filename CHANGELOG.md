@@ -5,6 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- Add version exchange cmd
 
 ## [v0.1.0] - 2026-06-17
 - First tagged release: multi-mode synth / granular / generative firmware with the
