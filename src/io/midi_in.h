@@ -10,6 +10,7 @@
 #include "config/params.h"
 #include "config/synth_params.h"
 #include "io/knobs.h"
+#include "io/clock.h"
 #include "modes/mode.h"
 
 namespace synthbox {
@@ -24,13 +25,23 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 // (the WebMIDI management interface, Phase 1). See docs/MIDI_PROTOCOL.md.
 // Returns true if any event was processed (used to blink a MIDI-activity LED).
 inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift,
-                     int& modeSel, int& fxSel) {
+                     int& modeSel, int& fxSel, MidiClock& clock, int& delaySync) {
   bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
     active = true;
     auto msg = midi.PopEvent();
     switch (msg.type) {
+      case daisy::SystemRealTime: {   // tempo clock / transport from GUI or device
+        uint32_t now = daisy::System::GetNow();
+        switch (msg.srt_type) {
+          case daisy::TimingClock: clock.Tick(now); break;
+          case daisy::Start:       clock.Start();    break;
+          case daisy::Continue:    clock.Continue(); break;
+          case daisy::Stop:        clock.Stop();     break;
+          default: break;
+        }
+      } break;
       case daisy::NoteOn: {
         auto m = msg.AsNoteOn();
         if (m.velocity != 0)
@@ -59,6 +70,10 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n >= params::midi::kCcSynthBase &&
                  n < params::midi::kCcSynthBase + SP_COUNT)
           g_synthParams.v[n - params::midi::kCcSynthBase] = v;
+        else if (n == params::midi::kCcTempo)
+          clock.SetInternalBpm(40.0f + v * 160.0f);            // 40..200 BPM
+        else if (n == params::midi::kCcDelaySync)
+          delaySync = static_cast<int>(v * 4.99f);             // 0 off / 1..4 divisions
         else if (n == params::midi::kCcSysReboot && cc.value >= 64)
           daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
       } break;

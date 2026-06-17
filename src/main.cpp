@@ -38,6 +38,8 @@ ModEngine       g_mod;
 AnalogSensors   g_sensors;
 ShiftKnobs      g_shift;
 GlobalFx        DSY_SDRAM_BSS g_fx;  // ReverbSc ~400KB -> must live in SDRAM
+MidiClock       g_clock;             // local tempo, locks to incoming MIDI clock
+int             g_delaySync = 0;     // delay tempo-sync division (0 = free)
 
 SynthMode       synth_mode;
 GranularMode    granular_mode;
@@ -91,6 +93,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   // FX: forced select (web CC 17 / moved toggle) wins, else follow TOGGLE 3.
   int fxsel = g_fxSel >= 0 ? g_fxSel : tog_fx;
   g_fx.SetMode(static_cast<GlobalFx::Mode>(fxsel));
+  g_fx.SetTempo(g_clock.Bpm());   // tempo-synced delay follows the local clock
+  g_fx.SetSync(g_delaySync);
 
   // FOOTSWITCH 1: hold = edit FX (knobs -> FX layer); quick tap = bypass toggle.
   bool fx_editing = hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
@@ -159,6 +163,7 @@ int main() {
   // Global FX (in SDRAM) + shift-layer with sensible FX starting points:
   //   mix .30 | time .40 | feedback .35 | tone .70 | rev decay .60 | rev damp .70
   g_fx.Init(sr);
+  g_clock.Init();
   const float fx_defaults[ShiftKnobs::kKnobs] = {0.30f, 0.40f, 0.35f,
                                                  0.70f, 0.60f, 0.70f};
   g_shift.Init(fx_defaults);
@@ -175,7 +180,8 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel)) g_last_midi_ms = System::GetNow();
+    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync)) g_last_midi_ms = System::GetNow();
+    g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
     // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
     {
       uint32_t now = System::GetNow();

@@ -41,6 +41,8 @@ class GlobalFx {
     tone_coef_ = 1.0f;
     mode_ = OFF;
     wet_ramp_ = 1.0f;
+    bpm_ = 120.0f;
+    sync_ = 0;
     lp_l_ = lp_r_ = 0.0f;
     s_fx_del_l.Init();
     s_fx_del_r.Init();
@@ -62,15 +64,24 @@ class GlobalFx {
   }
   Mode GetMode() const { return mode_; }
 
+  // Tempo-synced delay: bpm + division (0 = free/knob, 1..4 = 1/4 1/8 1/8. 1/16).
+  void SetTempo(float bpm) { bpm_ = bpm; }
+  void SetSync(int division) { sync_ = division; }
+
   // All inputs are normalized knob values (0..1); mapped to ranges here.
   void SetParams(float mix, float time, float fb, float tone, float decay,
                  float damp) {
     using namespace params::fx;
     mix_ = mix;
 
-    float ds = daisysp::fmap(time, kDelayMinMs, kDelayMaxMs,
-                             daisysp::Mapping::EXP) *
-               0.001f * sr_;
+    float ds;
+    if (sync_ > 0) {   // delay time locked to the clock at a musical division
+      static const float kBeats[4] = {1.0f, 0.5f, 0.75f, 0.25f};   // 1/4 1/8 1/8. 1/16
+      float beats = kBeats[sync_ > 4 ? 3 : sync_ - 1];
+      ds = (60.0f / (bpm_ < 20.0f ? 20.0f : bpm_)) * beats * sr_;
+    } else {
+      ds = daisysp::fmap(time, kDelayMinMs, kDelayMaxMs, daisysp::Mapping::EXP) * 0.001f * sr_;
+    }
     if (ds < 1.0f) ds = 1.0f;
     if (ds > static_cast<float>(kFxDelayMax - 1))
       ds = static_cast<float>(kFxDelayMax - 1);
@@ -133,6 +144,8 @@ class GlobalFx {
   float tone_coef_;
   float lp_l_, lp_r_;
   float wet_ramp_;   // 0..1 wet fade-in on engage (set to 0 by SetMode on a change)
+  float bpm_;        // clock tempo for synced delay
+  int   sync_;       // 0 = free (knob ms), 1..4 = tempo division
   Mode  mode_;
 };
 

@@ -146,6 +146,8 @@ constexpr int kCcFxKnobBase   = 26;  // CC 26..31 -> FX-layer knobs 1..6
 constexpr int kCcModeSelect   = 16;  // CC 16 -> mode  (0..42 synth / 43..85 granular / 86..127 generative)
 constexpr int kCcFxSelect     = 17;  // CC 17 -> FX    (0..42 off   / 43..85 delay    / 86..127 reverb)
 constexpr int kCcSynthBase    = 40;  // CC 40.. -> extended synth params (see config/synth_params.h)
+constexpr int kCcTempo        = 14;  // CC 14 -> internal clock BPM (0..127 -> 40..200)
+constexpr int kCcDelaySync    = 15;  // CC 15 -> delay tempo-sync division (0 off / 1/4 / 1/8 / 1/8. / 1/16)
 constexpr int kCcSysReboot    = 119; // CC 119 >=64 -> reboot to STM DFU bootloader (remote flashing)
 }  // namespace midi
 
