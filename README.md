@@ -19,10 +19,6 @@ Configure it live from its companion browser editor,
 running at **<https://rainybit-code.github.io/propagator/>**. See
 [`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx contract the two share.
 
-> **Status:** experimental / work-in-progress. Builds clean with arm-none-eabi-gcc
-> 12.3.1 → `build/daisy_synth.bin`. Treat hardware behaviour as unverified until you've
-> flashed and tested on your own unit.
-
 ## Hardware / platform
 
 Spore currently targets one platform:
