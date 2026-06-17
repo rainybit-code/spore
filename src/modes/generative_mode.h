@@ -1,10 +1,11 @@
 // =============================================================================
 //  generative_mode.h  --  MODE 3: self-playing AMBIENT landscape.
 // =============================================================================
-//  An evolving pad: a small pool of voices swell in and out over seconds while a
-//  slow clock seeds new (occasionally chordal) notes from a bounded random walk,
-//  quantized to a scale. Everything runs through a big dedicated reverb so it
-//  feels like a wash of sound. No input needed -- it plays itself.
+//  This mode is just the shared Voice pool (dsp/voice.h) driven by a randomizer
+//  instead of MIDI: a slow clock seeds (occasionally chordal) notes from a
+//  bounded random walk, each voice swells in and out over seconds, and the whole
+//  thing runs through a big dedicated reverb. Because it reuses Voice, it gets
+//  the same engine the Synth mode has (incl. the wavetable engine) for free.
 //
 //    KNOB 1: tempo (slow, ~20-90 BPM)   KNOB 2: pitch range
 //    KNOB 3: tone (filter)              KNOB 4: reverb (size + wet)
@@ -18,6 +19,7 @@
 
 #include "daisysp.h"
 #include "daisysp-lgpl.h"  // ReverbSc
+#include "dsp/voice.h"
 #include "modes/mode.h"
 #include "config/params.h"
 
@@ -27,50 +29,18 @@ namespace synthbox {
 // in SDRAM because ReverbSc carries a large internal buffer.
 static daisysp::ReverbSc DSY_SDRAM_BSS s_gen_reverb;
 
-// ---- one ambient voice: 2 detuned saws -> lowpass -> slow attack/decay swell ----
-class GenVoice {
- public:
-  void Init(float sr) {
-    o1_.Init(sr); o2_.Init(sr);
-    o1_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
-    o2_.SetWaveform(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
-    flt_.Init(sr); flt_.SetRes(0.18f);
-    env_.Init(sr); env_.SetMin(0.0f); env_.SetMax(1.0f);
-  }
-  void Trigger(float note, float atk, float dec, float detune) {
-    freq_ = daisysp::mtof(note);
-    detune_ = detune;
-    env_.SetTime(daisysp::ADENV_SEG_ATTACK, atk);
-    env_.SetTime(daisysp::ADENV_SEG_DECAY, dec);
-    env_.Trigger();
-  }
-  bool Active() const { return env_.IsRunning(); }
-
-  float Process(float cutoff) {
-    o1_.SetFreq(freq_ * (1.0f - detune_));
-    o2_.SetFreq(freq_ * (1.0f + detune_));
-    float e = env_.Process();
-    flt_.SetFreq(daisysp::fclamp(cutoff, 40.0f, 12000.0f));
-    flt_.Process((o1_.Process() + o2_.Process()) * 0.5f);
-    return flt_.Low() * e;
-  }
-
- private:
-  daisysp::Oscillator o1_, o2_;
-  daisysp::Svf        flt_;
-  daisysp::AdEnv      env_;
-  float freq_ = 220.0f, detune_ = 0.005f;
-};
-
 class GenerativeMode : public IMode {
  public:
   static constexpr int kVoices = 5;
 
   void Init(float sample_rate, Hothouse& /*hw*/) override {
     sr_ = sample_rate;
+    GenerateWavetables();   // shared with Synth; harmless to ensure it's filled
     for (int i = 0; i < kVoices; ++i) {
       voices_[i].Init(sample_rate);
+      voices_[i].SetWave(daisysp::Oscillator::WAVE_POLYBLEP_SAW);
       panL_[i] = panR_[i] = 0.5f;
+      off_[i] = -1.0f;
     }
     rng_.Init();
     walk_.Init(&rng_);
@@ -88,12 +58,12 @@ class GenerativeMode : public IMode {
   void Control(Hothouse& hw, ModContext& ctx) override {
     quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
 
-    float k_tempo  = ctx.knob[Hothouse::KNOB_1];
-    float k_range  = ctx.knob[Hothouse::KNOB_2];
-    float k_tone   = ctx.knob[Hothouse::KNOB_3];
-    float k_rev    = ctx.knob[Hothouse::KNOB_4];
-    float k_dens   = ctx.knob[Hothouse::KNOB_5];
-    float k_drift  = ctx.knob[Hothouse::KNOB_6];
+    float k_tempo = ctx.knob[Hothouse::KNOB_1];
+    float k_range = ctx.knob[Hothouse::KNOB_2];
+    float k_tone  = ctx.knob[Hothouse::KNOB_3];
+    float k_rev   = ctx.knob[Hothouse::KNOB_4];
+    float k_dens  = ctx.knob[Hothouse::KNOB_5];
+    float k_drift = ctx.knob[Hothouse::KNOB_6];
 
     bpm_     = 20.0f + k_tempo * 70.0f;                 // slow end: 20..90 BPM
     range_   = 5.0f + k_range * 24.0f;                  // +/- semitone spread
@@ -101,16 +71,35 @@ class GenerativeMode : public IMode {
     drift_   = k_drift;
     revMix_  = 0.30f + k_rev * 0.65f;                   // lots of reverb at the top
 
-    // Tone with a slow filter sway from a random LFO; analog sensor nudges pitch.
     float tone = 300.0f + k_tone * k_tone * (9000.0f - 300.0f);
-    cutoff_ = tone * (1.0f + drift_ * 0.6f * ctx.mod.Lfo1());
-    center_ = 48.0f + (ctx.sensors.Light() - 0.5f) * 12.0f;
+    cutoff_ = tone * (1.0f + drift_ * 0.6f * ctx.mod.Lfo1());   // slow filter sway
+    center_ = 48.0f + (ctx.sensors.Light() - 0.5f) * 12.0f;    // sensor nudges pitch center
 
-    s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);    // bigger space with more reverb
+    s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);
     s_gen_reverb.SetLpFreq(4000.0f + k_tone * 8000.0f);
 
-    // Slow event clock: every 1-2 beats (sparser when density is low).
+    // Per-block voice params: gentle ambient lowpass, no filter-env zap, soft body.
+    const float det = 0.004f + drift_ * 0.012f;
+    for (int i = 0; i < kVoices; ++i) {
+      voices_[i].engine  = 0.0f;        // analog (saws) -- swap to wavetable later if wanted
+      voices_[i].cutoff  = cutoff_;
+      voices_[i].detune  = det;
+      voices_[i].subLvl  = 0.22f;
+      voices_[i].fenvAmt = 0.0f;
+      voices_[i].pitchMod = 1.0f;
+      voices_[i].flt_.SetRes(0.18f);
+    }
+
+    // Schedule scheduled note-offs (the back half of each swell).
     const float dt = 1.0f / hw.AudioCallbackRate();
+    for (int i = 0; i < kVoices; ++i) {
+      if (off_[i] > 0.0f) {
+        off_[i] -= dt;
+        if (off_[i] <= 0.0f) { voices_[i].NoteOff(); off_[i] = -1.0f; }
+      }
+    }
+
+    // Slow event clock: every 1-2 beats (sparser when density is low).
     timer_ -= dt;
     if (timer_ <= 0.0f) {
       SeedEvent();
@@ -126,11 +115,11 @@ class GenerativeMode : public IMode {
       float l = 0.0f, r = 0.0f;
       for (int i = 0; i < kVoices; ++i) {
         if (!voices_[i].Active()) continue;
-        float s = voices_[i].Process(cutoff_);
+        float s = voices_[i].Process();
         l += s * panL_[i];
         r += s * panR_[i];
       }
-      l *= 0.22f; r *= 0.22f;                     // headroom for overlapping swells
+      l *= 0.30f; r *= 0.30f;                     // headroom for overlapping swells
       float wl, wr;
       s_gen_reverb.Process(l, r, &wl, &wr);
       out[0][n] = l * (1.0f - revMix_) + wl * revMix_;
@@ -147,26 +136,30 @@ class GenerativeMode : public IMode {
     int chord = 1;
     if (rng_.Unipolar() < density_) chord = (rng_.Unipolar() < 0.45f) ? 3 : 2;
 
-    // Longer swells when sparser; drift widens attack + detune for movement.
-    const float atk = 1.2f + drift_ * 2.5f + rng_.Unipolar() * 1.0f;       // ~1.2-4.7 s
-    const float dec = 5.0f + (1.0f - density_) * 5.0f + rng_.Unipolar() * 2.0f; // ~5-12 s
-    const float det = 0.004f + drift_ * 0.012f;
+    const float atk = 1.2f + drift_ * 2.5f + rng_.Unipolar() * 1.0f;          // ~1.2-4.7 s rise
+    const float rel = 5.0f + (1.0f - density_) * 5.0f + rng_.Unipolar() * 2.0f; // ~5-12 s fall
     const float pan = rng_.Bipolar() * 0.85f;     // place the whole event in the field
 
     static const float kStack[3] = {0.0f, 7.0f, 4.0f};  // root, fifth, third
     for (int c = 0; c < chord; ++c) {
       float note = QuantizeToScale(root + kStack[c], quantize_);
       note = daisysp::fclamp(note, 24.0f, 90.0f);
-      TriggerVoice(note, atk, dec, det, pan);
+      TriggerVoice(note, atk, rel, pan);
     }
   }
 
-  void TriggerVoice(float note, float atk, float dec, float det, float pan) {
+  void TriggerVoice(float note, float atk, float rel, float pan) {
     int idx = -1;
     for (int i = 0; i < kVoices; ++i)
       if (!voices_[i].Active()) { idx = i; break; }
-    if (idx < 0) { idx = steal_; steal_ = (steal_ + 1) % kVoices; }   // steal oldest-ish
-    voices_[idx].Trigger(note, atk, dec, det);
+    if (idx < 0) { idx = steal_; steal_ = (steal_ + 1) % kVoices; }
+    // Shape a swell: rise over the attack, hold at full, then NoteOff -> long release.
+    voices_[idx].amp_.SetAttackTime(atk);
+    voices_[idx].amp_.SetDecayTime(0.5f);
+    voices_[idx].amp_.SetSustainLevel(1.0f);
+    voices_[idx].amp_.SetReleaseTime(rel);
+    voices_[idx].NoteOn(note, 0.7f + rng_.Unipolar() * 0.3f);
+    off_[idx] = atk;                              // release begins once it reaches the peak
     panL_[idx] = 0.5f * (1.0f - pan);
     panR_[idx] = 0.5f * (1.0f + pan);
   }
@@ -189,8 +182,9 @@ class GenerativeMode : public IMode {
     return static_cast<float>(octave * 12 + best);
   }
 
-  GenVoice   voices_[kVoices];
+  Voice      voices_[kVoices];
   float      panL_[kVoices], panR_[kVoices];
+  float      off_[kVoices];   // seconds until the scheduled NoteOff (-1 = none)
   Rng        rng_;
   RandomWalk walk_;
   float sr_ = 48000.0f;
