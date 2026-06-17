@@ -53,9 +53,12 @@ uint32_t        g_last_midi_ms = 0;       // for the onboard MIDI-activity LED
 // Leave false now that mode is selectable over MIDI (CC 16) from the web tool.
 static constexpr bool kBenchForceSynth = false;
 
-// MIDI/web overrides for mode + FX select (-1 = use the physical toggle).
-int g_modeSel = -1;
-int g_fxSel = -1;
+// Mode + FX select. -1 = follow the physical toggle; >=0 = forced (web CC or a
+// toggle that has been moved). Boot into a KNOWN-QUIET state (Synth + FX off)
+// rather than self-playing whatever a floating/parked toggle happens to read;
+// the physical toggles take over the instant they're actually moved (below).
+int g_modeSel = MODE_SYNTH;
+int g_fxSel = 0;  // GlobalFx::OFF
 
 // extended synth params (set over MIDI CC 40+ from the Propagator synth panel)
 synthbox::SynthParams synthbox::g_synthParams;
@@ -68,16 +71,25 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   g_sensors.Process();
   g_mod.Process();
 
-  // Mode: web/MIDI override (CC 16) wins, else physical TOGGLE 1 (bench forces Synth).
+  // Hand control to a physical toggle the moment it's MOVED from its boot
+  // position (so the pedal boots quiet but the hardware switches still work).
+  static int last_tog_mode = CurrentMode(hw);
+  static int last_tog_fx   = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  int tog_mode = CurrentMode(hw);
+  int tog_fx   = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  if (tog_mode != last_tog_mode) { last_tog_mode = tog_mode; g_modeSel = -1; }
+  if (tog_fx   != last_tog_fx)   { last_tog_fx = tog_fx;     g_fxSel = -1; }
+
+  // Mode: forced select (web CC 16 / moved toggle) wins, else follow TOGGLE 1.
   int sel = kBenchForceSynth ? MODE_SYNTH
-                             : (g_modeSel >= 0 ? g_modeSel : CurrentMode(hw));
+                             : (g_modeSel >= 0 ? g_modeSel : tog_mode);
   if (sel != g_active) {
     g_active = sel;
     g_modes[g_active]->OnEnter();
   }
 
-  // FX: web/MIDI override (CC 17) wins, else physical TOGGLE 3.
-  int fxsel = g_fxSel >= 0 ? g_fxSel : TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  // FX: forced select (web CC 17 / moved toggle) wins, else follow TOGGLE 3.
+  int fxsel = g_fxSel >= 0 ? g_fxSel : tog_fx;
   g_fx.SetMode(static_cast<GlobalFx::Mode>(fxsel));
 
   // FOOTSWITCH 1: hold = edit FX (knobs -> FX layer); quick tap = bypass toggle.
