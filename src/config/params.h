@@ -109,6 +109,11 @@ constexpr float kLfo1MaxHz     = 6.0f;
 constexpr float kLfo2MinHz     = 0.05f;
 constexpr float kLfo2MaxHz     = 12.0f;
 constexpr float kSampleHoldHz  = 4.0f;      // default S&H step rate
+// Chaos sources (mod/modulation.h): a Lorenz attractor (smooth) + logistic map
+// (stepped). Deterministic-but-never-repeating modulation -- the "alive" core.
+constexpr float kChaosSpeed    = 2.0f;      // Lorenz evolution rate (time-units/sec; higher = busier)
+constexpr float kLogisticHz    = 4.0f;      // stepped (logistic-map) chaos step rate
+constexpr float kLogisticR     = 3.9f;      // logistic map r (chaotic in ~3.57..4.0)
 }  // namespace mod
 
 // ----------------------------------------------------------------------------

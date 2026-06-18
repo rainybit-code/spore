@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Chaos modulation sources**: a Lorenz attractor (smooth) + logistic map (stepped)
+  added to the shared `ModEngine` (`mod/modulation.h`) — deterministic-but-never-repeating
+  movement. Wired into **Generative** (chaotic filter sway + wavetable-scan drift) and
+  **Granular** (density drift). Params in `params::mod`. See `docs/MODULATION.md`.
 
 ## [v0.1.2] - 2026-06-18
 - **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The

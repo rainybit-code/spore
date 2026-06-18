@@ -75,7 +75,7 @@ class GenerativeMode : public IMode {
     revMix_  = 0.30f + k_rev * 0.65f;                   // lots of reverb at the top
 
     float tone = 300.0f + k_tone * k_tone * (9000.0f - 300.0f);
-    cutoff_ = tone * (1.0f + drift_ * 0.6f * ctx.mod.Lfo1());   // slow filter sway
+    cutoff_ = tone * (1.0f + drift_ * 0.6f * ctx.mod.ChaosX());   // chaotic filter sway
     center_ = 48.0f + (ctx.sensors.Light() - 0.5f) * 12.0f;    // sensor nudges pitch center
 
     s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);
@@ -83,7 +83,7 @@ class GenerativeMode : public IMode {
 
     // Per-block voice params come from the seeded patch (timbre) + macro knobs.
     // Scan drifts slowly so a wavetable patch keeps evolving; drift widens detune.
-    float scan = daisysp::fclamp(pScan_ + drift_ * 0.3f * ctx.mod.Lfo2(), 0.0f, 1.0f);
+    float scan = daisysp::fclamp(pScan_ + drift_ * 0.3f * ctx.mod.ChaosY(), 0.0f, 1.0f);
     const float det = pDetune_ + drift_ * 0.008f;
     for (int i = 0; i < kVoices; ++i) {
       voices_[i].SetWave(pWave_);

@@ -13,6 +13,20 @@ Each LFO can run **free (Hz)** or **clock-synced** to the tempo, selected per-LF
 clock is the local tempo, which locks to MIDI clock — see
 [`MIDI_PROTOCOL.md` §1a](MIDI_PROTOCOL.md).
 
+## Chaos sources
+Deterministic-but-never-repeating modulation, shared via `ModEngine` (`mod/modulation.h`),
+advanced once per block alongside the LFOs:
+- **Lorenz attractor** (`ChaosX` / `ChaosY`) — a smooth chaotic orbit; organic, structured
+  wander that's livelier than a random LFO. `ChaosX` and `ChaosY` are a decorrelated pair.
+- **Logistic map** (`ChaosStep`) — stepped chaos (`x' = r·x·(1-x)`); like a sample & hold
+  but with hidden banding/period-doubling structure that pure random lacks.
+
+Rates/parameters live in `params::mod` (`kChaosSpeed`, `kLogisticHz`, `kLogisticR`).
+Currently wired into **Generative** (chaotic filter sway + wavetable-scan drift, scaled by
+the Drift knob) and **Granular** (density drift). 🔜 Next: expose Chaos as a 7th **matrix
+source** in the Synth (needs a coordinated patchbay jack in Propagator + the `*6→*7`
+source-encoding bump — see [`IDEAS.md`](IDEAS.md)).
+
 ## Mod matrix (6 slots)
 Each slot routes one **source** to one **destination** with a **bipolar amount**
 (-1..+1). Slots sum per destination; the result is applied at block rate. In the

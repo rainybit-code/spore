@@ -42,6 +42,11 @@ Legend: 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferred) · 🅲 
   ping-pong, per-mode FX presets, or a second FX slot (delay → reverb in series).
 - 💡 **More modes** — implement `IMode` (`modes/mode.h`) and add to the array in
   `main.cpp`. Candidates: drone/oscillator bank, resonator, wavefolder, sample looper.
+- 🔜 **Chaos as a Synth matrix source** — the chaos generators (Lorenz + logistic) now
+  drive Generative + Granular; next, expose `ChaosX` as a 7th **matrix source** in the
+  Synth. Coordinated change: firmware source-encoding `*6.99→*7.99` (`synth_mode.h`) **and**
+  a new source jack in Propagator's patchbay (`SRCY`/`MOD_SRC`) — both must land together
+  or existing routings shift.
 - 💡 **Mod-matrix extensions** — let a wireless source and the Generative seed wire
   the matrix slots (the 6-slot matrix itself exists — see [`MODULATION.md`](MODULATION.md)).
 - 💡 **Granular v2** — stereo grains, panning spread, reverse grains, pitch-quantize

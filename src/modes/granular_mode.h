@@ -57,9 +57,9 @@ class GranularMode : public IMode {
 
     grain_len_ = (kGrainSizeMinMs + k_size * (kGrainSizeMaxMs - kGrainSizeMinMs)) *
                  0.001f * sr_;
-    // Density also rides the random LFO a touch for organic motion.
+    // Density rides the chaos source a touch for organic, never-repeating motion.
     float dens = kDensityMinHz + k_dens * (kDensityMaxHz - kDensityMinHz);
-    density_ = dens * (1.0f + 0.2f * ctx.mod.Lfo2());
+    density_ = dens * (1.0f + 0.2f * ctx.mod.ChaosX());
     pitch_semi_ = kPitchSemiMin + k_pitch * (kPitchSemiMax - kPitchSemiMin);
     // Analog sensor (e.g. pressure/light) adds to pitch spread when wired.
     spread_semi_ = k_spread * kPitchSpreadMax + (ctx.sensors.Pressure() - 0.5f) * 4.0f;
