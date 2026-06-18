@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Steps mod-matrix source** (#8): the logistic-map (stepped) chaos `ChaosStep` is now a
+  routable Synth matrix source (was computed but unused). Source encoding widened `*7`→`*8`
+  (`synth_mode.h`); Propagator gains the jack with a v2→v3 patch migration.
 - **Live Chaos controls + telemetry**: Lorenz **speed** is now tunable over **CC 18**
   (`ModEngine::SetChaosSpeed`, range in `params::mod`). New SysEx **chaos-state** query
   (`F0 7D 03 F7` → `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it

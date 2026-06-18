@@ -102,22 +102,22 @@ class SynthMode : public IMode {
     float lfo2 = lfo2_.Process();
 
     // ---- mod matrix ----
-    // sources: 1 LFO1  2 LFO2  3 Rnd  4 Sensor  7 Chaos  (global)  ·  5 Velocity  6 Key (per-voice)
+    // sources: 1 LFO1 2 LFO2 3 Rnd 4 Sensor 7 Chaos 8 Steps (global) · 5 Velocity 6 Key (per-voice)
     // dests:   0 cutoff 1 pitch 2 scan 3 drive 4 sub 5 fm 6 amp 7 LFO1-rate 8 LFO2-rate
-    float src[8] = {0.0f, lfo * depth1, lfo2 * p.v[SP_LFO2_DEPTH],
+    float src[9] = {0.0f, lfo * depth1, lfo2 * p.v[SP_LFO2_DEPTH],
                     ctx.mod.Lfo1(), ctx.sensors.Light() * 2.0f - 1.0f,
-                    0.0f, 0.0f, ctx.mod.ChaosX()};   // [5]/[6] = per-voice (Vel/Key); [7] = Chaos
+                    0.0f, 0.0f, ctx.mod.ChaosX(), ctx.mod.ChaosStep()};   // [5]/[6] per-voice (Vel/Key); [7] Chaos, [8] Steps
     float mod[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};   // global modulation (all voices)
     const int kSrc[6] = {SP_M1_SRC, SP_M2_SRC, SP_M3_SRC, SP_M4_SRC, SP_M5_SRC, SP_M6_SRC};
     const int kDst[6] = {SP_M1_DST, SP_M2_DST, SP_M3_DST, SP_M4_DST, SP_M5_DST, SP_M6_DST};
     const int kAmt[6] = {SP_M1_AMT, SP_M2_AMT, SP_M3_AMT, SP_M4_AMT, SP_M5_AMT, SP_M6_AMT};
     int   nPV = 0; int pvSrc[6], pvDst[6]; float pvAmt[6];   // per-voice slots (Velocity / Key)
     for (int s = 0; s < 6; ++s) {
-      int si = clampi(static_cast<int>(p.v[kSrc[s]] * 7.99f), 0, 7);
+      int si = clampi(static_cast<int>(p.v[kSrc[s]] * 8.99f), 0, 8);
       if (si == 0) continue;   // Off
       int di = clampi(static_cast<int>(p.v[kDst[s]] * 8.99f), 0, 8);
       float amt = (p.v[kAmt[s]] - 0.5f) * 2.0f;
-      if (si <= 4 || si == 7) { mod[di] += src[si] * amt; }        // global source (incl. Chaos)
+      if (si <= 4 || si >= 7) { mod[di] += src[si] * amt; }        // global source (incl. Chaos/Steps)
       else if (di <= 5) { pvSrc[nPV] = si; pvDst[nPV] = di; pvAmt[nPV] = amt; ++nPV; }  // per-voice -> cutoff..fm
     }
     float cutMul   = 1.0f + mod[0] * 0.9f;
