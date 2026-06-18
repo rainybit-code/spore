@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.1.2] - 2026-06-18
 - **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The
   Cortex-M7 handles denormal floats on a slow path and libDaisy only enables FPU
   *access*, so a decaying `ReverbSc` tail (no denormal guard of its own) stalled the
