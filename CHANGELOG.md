@@ -9,6 +9,9 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   added to the shared `ModEngine` (`mod/modulation.h`) — deterministic-but-never-repeating
   movement. Wired into **Generative** (chaotic filter sway + wavetable-scan drift) and
   **Granular** (density drift). Params in `params::mod`. See `docs/MODULATION.md`.
+- **Chaos as a Synth mod-matrix source** (#7): route the Lorenz chaos to any destination
+  via the patchbay. Source encoding widened from `*6`→`*7` (`synth_mode.h`); Propagator
+  gains the matching jack (with a v1→v2 patch migration so old routings keep their meaning).
 
 ## [v0.1.2] - 2026-06-18
 - **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The
