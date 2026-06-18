@@ -18,6 +18,8 @@ Configure it live from its companion browser editor,
 running at **<https://rainybit-code.github.io/propagator/>**. See
 [`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx contract the two share.
 
+![Propagator — the companion browser editor for Spore](docs/propagator.png)
+
 ## Hardware / platform
 
 Spore currently targets one platform:
@@ -54,7 +56,8 @@ means nothing jumps when you let go. See `src/fx/effects.h`.
 ## Getting started
 
 ```sh
-git clone --recurse-submodules <repo-url>    # pulls libDaisy + DaisySP too
+# pulls libDaisy + DaisySP too
+git clone --recurse-submodules https://github.com/rainybit-code/spore.git
 ```
 
 1. **Toolchain** — install ARM GCC + `make` + `dfu-util`. Easiest is the official
@@ -65,8 +68,10 @@ git clone --recurse-submodules <repo-url>    # pulls libDaisy + DaisySP too
    optional (tasks + IntelliSense are wired in `.vscode/`).
 2. **Libraries** — wired as git submodules under `lib/`; build them once:
    ```sh
-   git submodule update --init --recursive   # if you didn't clone with --recurse-submodules
-   scripts/build-libs.sh      # or scripts\build-libs.ps1 on Windows
+   # if you didn't clone with --recurse-submodules
+   git submodule update --init --recursive
+   # or scripts\build-libs.ps1 on Windows
+   scripts/build-libs.sh
    ```
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
 4. **Flash** (no programmer needed): put the Daisy in DFU mode (hold **BOOT**, tap
@@ -115,8 +120,9 @@ section as the release notes.
 
 ```sh
 # 1. add your notes under "## [Unreleased]" in CHANGELOG.md
-# 2. cut the release in one command (moves notes -> dated heading, commits, tags, pushes):
-scripts/release.sh v0.2.0          # or:  scripts\release.ps1 v0.2.0   (Windows)
+# 2. cut the release in one command (moves notes -> dated heading, commits, tags, pushes)
+# Windows: scripts\release.ps1 v0.2.0
+scripts/release.sh v0.2.0
 ```
 
 Flash a release `.bin` over USB DFU (hold **BOOT**, tap **RESET**, then
