@@ -112,6 +112,8 @@ constexpr float kSampleHoldHz  = 4.0f;      // default S&H step rate
 // Chaos sources (mod/modulation.h): a Lorenz attractor (smooth) + logistic map
 // (stepped). Deterministic-but-never-repeating modulation -- the "alive" core.
 constexpr float kChaosSpeed    = 2.0f;      // Lorenz evolution rate (time-units/sec; higher = busier)
+constexpr float kChaosSpeedMin = 0.2f;      // CC 18 maps 0..127 to this range: slow drift ...
+constexpr float kChaosSpeedMax = 12.0f;     // ... to busy/turbulent
 constexpr float kLogisticHz    = 4.0f;      // stepped (logistic-map) chaos step rate
 constexpr float kLogisticR     = 3.9f;      // logistic map r (chaotic in ~3.57..4.0)
 }  // namespace mod
@@ -157,6 +159,7 @@ constexpr int kCcModeKnobBase = 20;  // CC 20..25 -> MODE-layer knobs 1..6
 constexpr int kCcFxKnobBase   = 26;  // CC 26..31 -> FX-layer knobs 1..6
 constexpr int kCcModeSelect   = 16;  // CC 16 -> mode  (0..42 synth / 43..85 granular / 86..127 generative)
 constexpr int kCcFxSelect     = 17;  // CC 17 -> FX    (0..42 off   / 43..85 delay    / 86..127 reverb)
+constexpr int kCcChaosSpeed   = 18;  // CC 18 -> Lorenz chaos speed (0..127 -> kChaosSpeedMin..Max)
 constexpr int kCcSynthBase    = 40;  // CC 40.. -> extended synth params (see config/synth_params.h)
 constexpr int kCcTempo        = 14;  // CC 14 -> internal clock BPM (0..127 -> 40..200)
 constexpr int kCcDelaySync    = 15;  // CC 15 -> delay tempo-sync division (0 off / 1/4 / 1/8 / 1/8. / 1/16)

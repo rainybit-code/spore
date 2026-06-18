@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Live Chaos controls + telemetry**: Lorenz **speed** is now tunable over **CC 18**
+  (`ModEngine::SetChaosSpeed`, range in `params::mod`). New SysEx **chaos-state** query
+  (`F0 7D 03 F7` → `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it
+  live — reports the already-computed value, so **no extra audio-CPU cost**.
 
 ## [v0.2.0] - 2026-06-18
 - **Chaos modulation sources**: a Lorenz attractor (smooth) + logistic map (stepped)

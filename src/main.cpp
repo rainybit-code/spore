@@ -195,7 +195,7 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu)) g_last_midi_ms = System::GetNow();
+    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu, g_mod)) g_last_midi_ms = System::GetNow();
     g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
     // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
     {

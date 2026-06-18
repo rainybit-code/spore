@@ -21,9 +21,13 @@ advanced once per block alongside the LFOs:
 - **Logistic map** (`ChaosStep`) — stepped chaos (`x' = r·x·(1-x)`); like a sample & hold
   but with hidden banding/period-doubling structure that pure random lacks.
 
-Rates/parameters live in `params::mod` (`kChaosSpeed`, `kLogisticHz`, `kLogisticR`).
-Wired into **Generative** (chaotic filter sway + wavetable-scan drift, scaled by the Drift
-knob), **Granular** (density drift), and the **Synth** as matrix source **7** (`ChaosX`).
+Rates/parameters live in `params::mod` (`kChaosSpeed`, `kLogisticHz`, `kLogisticR`). The
+Lorenz **speed** is live-controllable over **CC 18** (`SetChaosSpeed`, range
+`kChaosSpeedMin..Max`). Wired into **Generative** (chaotic filter sway + wavetable-scan
+drift, scaled by the Drift knob), **Granular** (density drift), and the **Synth** as matrix
+source **7** (`ChaosX`). Propagator can also draw the live attractor: it polls the device's
+X/Z via SysEx `0x03`→`0x43` (~20 Hz, only while the canvas is visible — see
+[`MIDI_PROTOCOL.md` §2](MIDI_PROTOCOL.md)).
 
 ## Mod matrix (6 slots)
 Each slot routes one **source** to one **destination** with a **bipolar amount**

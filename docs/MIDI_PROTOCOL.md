@@ -28,6 +28,7 @@ means depends on the active mode. All numbers are defined in
 | 15     | **Delay sync** division (0 off · 1 = 1/4 · 2 = 1/8 · 3 = dotted-1/8 · 4 = 1/16) |
 | 16     | Mode select (thirds: 0..42 synth / 43..85 granular / 86..127 generative) |
 | 17     | FX select (thirds: off / delay / reverb) |
+| 18     | **Chaos speed** (Lorenz evolution rate, 0..127 → slow…busy) — global |
 | 20–25  | MODE-layer knobs 1–6 (active mode's macros, soft-takeover) |
 | 26–31  | FX-layer knobs 1–6 (mix / delay time / fb / tone / rev decay / damp) |
 | 40–87  | Synth panel params (`SP_*`, `kCcSynthBase + index`; full list below) |
@@ -92,6 +93,12 @@ Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
   (percent, capped; `0` before the first audio block). Propagator polls this once a
   second and shows `CPU <avg>% · peak <max>%` in the MIDI monitor (peak ≥ 90 % turns
   red — at risk of dropouts). A diagnostic for judging headroom while tuning patches.
+- `0x03` **Chaos-state query** (web→device), no payload: `F0 7D 03 F7`.
+- `0x43` **Chaos-state reply** (device→web): `F0 7D 43 <x> <z> F7` — the Lorenz
+  attractor's X/Z pair (the classic butterfly projection), each `-1..1` mapped to
+  `0..127`. The chaos already runs every block (it's the mod engine), so this just
+  reports the cached value — **no extra audio-CPU cost**. Propagator polls it (~20 Hz,
+  only while the attractor canvas is visible) to draw the live chaos in the MOD pod.
 
 ## 3. Full patch dump / load — SysEx 🔜 (Phase 2 → enables presets)
 

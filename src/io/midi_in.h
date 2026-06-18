@@ -14,6 +14,7 @@
 #include "util/CpuLoadMeter.h"
 #include "config/params.h"
 #include "config/synth_params.h"
+#include "mod/modulation.h"
 #include "io/knobs.h"
 #include "io/clock.h"
 #include "modes/mode.h"
@@ -31,7 +32,7 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 // Returns true if any event was processed (used to blink a MIDI-activity LED).
 inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift,
                      int& modeSel, int& fxSel, MidiClock& clock, int& delaySync,
-                     daisy::CpuLoadMeter& cpu) {
+                     daisy::CpuLoadMeter& cpu, ModEngine& modEngine) {
   bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
@@ -80,6 +81,9 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
           clock.SetInternalBpm(40.0f + v * 160.0f);            // 40..200 BPM
         else if (n == params::midi::kCcDelaySync)
           delaySync = static_cast<int>(v * 4.99f);             // 0 off / 1..4 divisions
+        else if (n == params::midi::kCcChaosSpeed)
+          modEngine.SetChaosSpeed(params::mod::kChaosSpeedMin +
+              v * (params::mod::kChaosSpeedMax - params::mod::kChaosSpeedMin));
         else if (n == params::midi::kCcSysReboot && cc.value >= 64)
           daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
       } break;
@@ -110,6 +114,18 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
           };
           uint8_t reply[6] = {0xF0, 0x7D, 0x42,
                               pct(cpu.GetAvgCpuLoad()), pct(cpu.GetMaxCpuLoad()), 0xF7};
+          midi.SendMessage(reply, 6);
+        } else if (cmd == 0x03) {                             // chaos-state query
+          // Reply `F0 7D 43 <x> <z> F7` -- the Lorenz X/Z pair (the classic butterfly
+          // projection), each -1..1 mapped to 0..127. The chaos already runs every
+          // block (it's the mod engine), so this just reports the cached value: no
+          // extra audio-CPU cost. Propagator polls it to draw the live attractor.
+          auto enc = [](float val) -> uint8_t {   // -1..1 -> 0..127
+            int b = static_cast<int>((val + 1.0f) * 0.5f * 127.0f + 0.5f);
+            return static_cast<uint8_t>(b < 0 ? 0 : (b > 127 ? 127 : b));
+          };
+          uint8_t reply[6] = {0xF0, 0x7D, 0x43,
+                              enc(modEngine.ChaosX()), enc(modEngine.ChaosY()), 0xF7};
           midi.SendMessage(reply, 6);
         }
       } break;
