@@ -1,4 +1,4 @@
-# 🌱 Spore — Versatile Generative Synth / FX
+# 🌱 Spore - Versatile Generative Synth / FX
 
 [![firmware build](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml/badge.svg)](https://github.com/rainybit-code/spore/actions/workflows/firmware.yml)
 
@@ -6,19 +6,19 @@
 [Cleveland Music Co. Hothouse](https://clevelandmusicco.com) enclosure into a multi-mode
 instrument:
 
-- **Synth** — playable voice over **USB MIDI** (analog/wavetable osc → filter → envelope)
-- **Granular** — granular texture from the **built-in audio input**, with **freeze**
-- **Generative** — self-playing "Krell" voice (random-walk pitch, evolving envelopes)
+- **Synth** - playable voice over **USB MIDI** (analog/wavetable osc → filter → envelope)
+- **Granular** - granular texture from the **built-in audio input**, with **freeze**
+- **Generative** - self-playing "Krell" voice (random-walk pitch, evolving envelopes)
 
 …plus a shared **modulation engine** (hardware-RNG LFOs / sample & hold / 6-slot mod
 matrix), a **tempo-synced** delay + clock, and an **analog sensor input** on a free ADC pin.
 
 Configure it live from its companion browser editor,
-**[Propagator](https://github.com/rainybit-code/propagator)** (WebMIDI, no install) —
+**[Propagator](https://github.com/rainybit-code/propagator)** -
 running at **<https://rainybit-code.github.io/propagator/>**. See
 [`docs/MIDI_PROTOCOL.md`](docs/MIDI_PROTOCOL.md) for the CC/SysEx contract the two share.
 
-![Propagator — the companion browser editor for Spore](docs/propagator.png)
+![Propagator - the companion browser editor for Spore](docs/propagator.png)
 
 ## Hardware / platform
 
@@ -29,8 +29,8 @@ Spore currently targets one platform:
 - **Built with:** [libDaisy](https://github.com/electro-smith/libDaisy) +
   [DaisySP](https://github.com/electro-smith/DaisySP) (vendored as submodules).
 - **Enclosure:** the [Cleveland Music Co. Hothouse](https://shop.clevelandmusicco.com/products/hothouse-digital-signal-processing-platform-kit)
-  DIY kit — chosen for ease of use, since it brings out 6 knobs, 3 toggles, 2
-  footswitches, 2 LEDs and stereo 1/4" I/O off the shelf (no custom panel needed).
+  DIY kit - chosen for ease of use, since it brings out 6 knobs, 3 toggles, 2
+  footswitches, 2 LEDs and stereo 1/4" I/O off the shelf.
 
 ## Control surface
 
@@ -39,9 +39,9 @@ Spore currently targets one platform:
 | **Toggle 1** | Mode: **UP** Synth · **MIDDLE** Granular · **DOWN** Generative *(use a 3-position switch)* |
 | **Toggle 2** | Per-mode variant (waveform / pitch-quantize / scale) |
 | **Toggle 3** | FX: **UP** off · **MIDDLE** delay · **DOWN** reverb |
-| **Knobs 1–6**| Per-mode macros — see [`src/config/params.h`](src/config/params.h) |
+| **Knobs 1–6**| Per-mode macros - see [`src/config/params.h`](src/config/params.h) |
 | **Footsw 1** | **Tap** = engage/bypass · **Hold** = edit FX (knobs become FX controls) |
-| **Footsw 2** | Mode action — Granular **freeze**, Generative **re-seed** |
+| **Footsw 2** | Mode action - Granular **freeze**, Generative **re-seed** |
 | **LED 1 / 2**| Engaged state (mid = editing FX) / active FX |
 | Hold **both** footswitches 2s | Reboot to **DFU** for flashing |
 
@@ -50,7 +50,7 @@ input (they generate); Granular records and reuses it.
 
 **Global FX** is a decoupled delay + reverb block that processes whatever the active
 mode outputs (selected by Toggle 3). Hold Footswitch 1 to remap the 6 knobs to FX
-(mix / delay time / feedback / tone / reverb decay / damping) — **soft-takeover**
+(mix / delay time / feedback / tone / reverb decay / damping) - **soft-takeover**
 means nothing jumps when you let go. See `src/fx/effects.h`.
 
 ## Getting started
@@ -60,13 +60,13 @@ means nothing jumps when you let go. See `src/fx/effects.h`.
 git clone --recurse-submodules https://github.com/rainybit-code/spore.git
 ```
 
-1. **Toolchain** — install ARM GCC + `make` + `dfu-util`. Easiest is the official
+1. **Toolchain** - install ARM GCC + `make` + `dfu-util`. Easiest is the official
    [Daisy toolchain](https://daisy.audio/tutorials/cpp-dev-env/); on Windows you can
    instead drop a portable xPack ARM GCC + windows-build-tools into a local
    `toolchain/` folder (gitignored) and `scripts/env.*` will put it on PATH
-   automatically. `dfu-util` is only needed to flash, not to build. VS Code is
-   optional (tasks + IntelliSense are wired in `.vscode/`).
-2. **Libraries** — wired as git submodules under `lib/`; build them once:
+   automatically. `dfu-util` is only needed to flash, not to build. VS Code 
+   tasks + IntelliSense are wired in `.vscode/`.
+2. **Libraries** - wired as git submodules under `lib/`; build them once:
    ```sh
    # if you didn't clone with --recurse-submodules
    git submodule update --init --recursive
@@ -74,7 +74,7 @@ git clone --recurse-submodules https://github.com/rainybit-code/spore.git
    scripts/build-libs.sh
    ```
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
-4. **Flash** (no programmer needed): put the Daisy in DFU mode (hold **BOOT**, tap
+4. **Flash** (via USB DFU): put the Daisy in DFU mode (hold **BOOT**, tap
    **RESET**), then `scripts/flash.sh` (or `.ps1`).
 
 ## Project layout
@@ -100,7 +100,7 @@ class implementing `IMode` (`src/modes/mode.h`) into the array in `main.cpp`.
 
 ## Non-standard inputs
 
-- **Analog sensor** (LDR / FSR / flex / expression / CV) — wired to free **A0 = D15**;
+- **Analog sensor** (LDR / FSR / flex / expression / CV) - wired to free **A0 = D15**;
   handled in `src/io/sensors.h` (extends the ADC; more channels: A9=D24, A11=D28).
   Feeds the modulation routing in each mode's `Control()`; neutral (no effect) until
   the hardware is connected.
@@ -133,7 +133,7 @@ Flash a release `.bin` over USB DFU (hold **BOOT**, tap **RESET**, then
 **GPL-3.0-or-later.** Copyright (C) 2026 Joakim Langkilde. See [`LICENSE`](LICENSE).
 
 The licence is GPL because the project compiles in the **Hothouse hardware proxy**
-(`src/hothouse.cpp` / `.h`), which is GPL-3.0 © Cleveland Music Co. — included from
+(`src/hothouse.cpp` / `.h`), which is GPL-3.0 © Cleveland Music Co. - included from
 [HothouseExamples](https://github.com/clevelandmusicco/HothouseExamples) with its header
 intact. [libDaisy](https://github.com/electro-smith/libDaisy) and
 [DaisySP](https://github.com/electro-smith/DaisySP) (both MIT, © Electrosmith) are pulled
