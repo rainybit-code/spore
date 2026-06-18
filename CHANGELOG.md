@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.2.1] - 2026-06-18
 - **Steps mod-matrix source** (#8): the logistic-map (stepped) chaos `ChaosStep` is now a
   routable Synth matrix source (was computed but unused). Source encoding widened `*7`→`*8`
   (`synth_mode.h`); Propagator gains the jack with a v2→v3 patch migration.
