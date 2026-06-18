@@ -17,6 +17,7 @@
 // =============================================================================
 #include "daisy_seed.h"
 #include "hothouse.h"
+#include "util/CpuLoadMeter.h"
 
 #include "config/params.h"
 #include "mod/modulation.h"
@@ -42,6 +43,7 @@ ShiftKnobs      g_shift;
 GlobalFx        DSY_SDRAM_BSS g_fx;  // ReverbSc ~400KB -> must live in SDRAM
 MidiClock       g_clock;             // local tempo, locks to incoming MIDI clock
 int             g_delaySync = 0;     // delay tempo-sync division (0 = free)
+daisy::CpuLoadMeter g_cpu;           // audio-callback load; reported over SysEx (cmd 0x02)
 
 SynthMode       synth_mode;
 GranularMode    granular_mode;
@@ -71,6 +73,7 @@ Led led1, led2;
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                    size_t size) {
+  g_cpu.OnBlockStart();
   hw.ProcessAllControls();
   g_sensors.Process();
   g_mod.Process();
@@ -140,10 +143,19 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
       out[1][i] = out[1][i] > 1.0f ? 1.0f : (out[1][i] < -1.0f ? -1.0f : out[1][i]);
     }
   }
+  g_cpu.OnBlockEnd();
 }
 
 int main() {
   hw.Init();
+
+  // FPU flush-to-zero: the Cortex-M7 handles denormal floats on a slow path, and
+  // libDaisy's SystemInit only enables FPU *access* (CPACR), never FZ. A decaying
+  // ReverbSc tail (no denormal guard of its own) drifts into denormal range and
+  // stalls the FPU -> crackle as the reverb rings out. Set FPSCR.FZ once here so
+  // denormals flush to zero for every context, including the audio ISR.
+  __set_FPSCR(__get_FPSCR() | (1u << 24));  // FZ = bit 24
+
   hw.SetAudioBlockSize(params::audio::kBlockSize);
   hw.SetAudioSampleRate(SaiHandle::Config::SampleRate::SAI_48KHZ);
 
@@ -153,6 +165,7 @@ int main() {
   InitMidi(midi);
 
   const float sr = hw.AudioSampleRate();
+  g_cpu.Init(sr, hw.AudioBlockSize());   // audio-load meter (avg/max), read over SysEx
   g_mod.Init(hw.AudioCallbackRate());
 
   synth_mode.Init(sr, hw);
@@ -182,7 +195,7 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync)) g_last_midi_ms = System::GetNow();
+    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu)) g_last_midi_ms = System::GetNow();
     g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
     // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
     {

@@ -89,6 +89,37 @@ Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 - 💡 **Pure Data prototyping** — sketch new DSP/generative ideas in `pd/` first,
   then port to a mode.
 
+## Performance / CPU headroom — parked levers
+
+Audio runs a **48-sample block @ 48 kHz** → ~1 ms / ~480k cycles per callback on the
+M7. Shipped this round: **FPU flush-to-zero** (`FPSCR.FZ` in `main.cpp` — fixed the
+reverb-tail denormal crackle) and a **`CpuLoadMeter`** reported over SysEx `0x02`/`0x42`
+and shown live in Propagator. **Measure with that meter before/after any of the below.**
+
+- 🔜 **`-ffast-math` and/or `-O3`** *(next experiment — try with the meter)*. Currently
+  `-O2` (libDaisy default). Relaxed float math is typically a few-to-~15 % on this DSP;
+  rounding differs slightly but inaudible here. Add to `CFLAGS`/`OPT` in the project
+  `Makefile`; A/B with the CPU meter. Safer subset: `-fno-math-errno -ffp-contract=fast`.
+- 🔜 **Bigger audio block** *(next experiment)*. `params::audio::kBlockSize` 48 → 64/96
+  amortizes per-block fixed overhead (control reads, LFO ticks, call setup). Cost is
+  latency: 48→96 = 1 ms→2 ms (still low). One-line change.
+- 💡 **Cap voices / unison.** Synth's dominant cost is oscillators: 6 voices × up to
+  4 unison + sub ≈ 30 osc/sample worst case (`dsp/voice.h`). Lower the max, or auto-reduce
+  when the global reverb is engaged. Linear CPU savings.
+- 💡 **Cheaper filter / oscillator per patch.** `MoogLadder` ≈ 2× the `Svf`;
+  `WAVE_POLYBLEP_*` pays for anti-aliasing the wavetable engine already bakes in.
+  Defaulting toward the cheaper option where a patch allows trims per-voice cost.
+- 🅱️ **ITCM hot-loop placement** — *do this with a device in hand* (boot-copy bug =
+  hard-fault, unverifiable blind). The linker script has **no `.itcm_text` section**, so
+  it needs: a vendored copy of `STM32H750IB_flash.lds` (point `LDSCRIPT` at it from the
+  Makefile — `?=`, same no-submodule-edit trick as `usb_identity.c`), an `.itcm_text`
+  section `> ITCMRAM AT > FLASH`, a boot-time copy loop in `main()` (startup only inits
+  `.data`/`.bss`), and a `section(".itcm_text")` attr on the hot fn (e.g. `Voice::Process`,
+  forced non-inline). NOTE: **DTCM data is *not* worth it** — libDaisy's own
+  `daisy_core.h` says DTCM is "on par with internal SRAM w/ cache enabled", and the
+  wavetables already live in cached SRAM; DTCM also shares the 128 KB region with the
+  stack. ITCM *code* is the only placement lever with a real (jitter) upside here.
+
 ## Memory / boot layout — parked until flash gets tight
 
 Currently `APP_TYPE = BOOT_NONE`: the app runs from the **128 KB internal flash**

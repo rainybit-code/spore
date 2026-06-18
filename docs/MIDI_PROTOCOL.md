@@ -86,6 +86,12 @@ Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
   Propagator uses this to flag when a newer release is available (pulsing the DFU
   button). 🔜 Fuller capabilities (protocol rev, mode/knob/slot counts, free QSPI)
   can extend the same reply later.
+- `0x02` **CPU-load query** (web→device), no payload: `F0 7D 02 F7`.
+- `0x42` **CPU-load reply** (device→web): `F0 7D 42 <avg%> <max%> F7` — the
+  audio-callback load from libDaisy's `CpuLoadMeter`, two bytes each `0..127`
+  (percent, capped; `0` before the first audio block). Propagator polls this once a
+  second and shows `CPU <avg>% · peak <max>%` in the MIDI monitor (peak ≥ 90 % turns
+  red — at risk of dropouts). A diagnostic for judging headroom while tuning patches.
 
 ## 3. Full patch dump / load — SysEx 🔜 (Phase 2 → enables presets)
 

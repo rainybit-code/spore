@@ -8,7 +8,10 @@
 // =============================================================================
 #pragma once
 
+#include <cmath>
+
 #include "daisy_seed.h"
+#include "util/CpuLoadMeter.h"
 #include "config/params.h"
 #include "config/synth_params.h"
 #include "io/knobs.h"
@@ -27,7 +30,8 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 // (the WebMIDI management interface, Phase 1). See docs/MIDI_PROTOCOL.md.
 // Returns true if any event was processed (used to blink a MIDI-activity LED).
 inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift,
-                     int& modeSel, int& fxSel, MidiClock& clock, int& delaySync) {
+                     int& modeSel, int& fxSel, MidiClock& clock, int& delaySync,
+                     daisy::CpuLoadMeter& cpu) {
   bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
@@ -86,7 +90,9 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         // may not keep the 0xF0 framing in data[], so accept either.
         auto sx = msg.AsSystemExclusive();
         int  i  = (sx.length > 0 && sx.data[0] == 0xF0) ? 1 : 0;
-        if (sx.length >= i + 2 && sx.data[i] == 0x7D && sx.data[i + 1] == 0x01) {
+        if (sx.length < i + 2 || sx.data[i] != 0x7D) break;   // not our manufacturer ID
+        const uint8_t cmd = sx.data[i + 1];
+        if (cmd == 0x01) {                                    // identify request
           uint8_t reply[32];
           int     j  = 0;
           reply[j++] = 0xF0; reply[j++] = 0x7D; reply[j++] = 0x41;   // identify reply
@@ -94,6 +100,17 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
             reply[j++] = static_cast<uint8_t>(*p) & 0x7F;
           reply[j++] = 0xF7;
           midi.SendMessage(reply, j);
+        } else if (cmd == 0x02) {                             // CPU-load query
+          // Reply `F0 7D 42 <avg%> <max%> F7`. Each byte is 0..127 (% load, capped);
+          // NaN before the first audio block reads as 0. Lets Propagator show headroom.
+          auto pct = [](float load) -> uint8_t {
+            if (std::isnan(load) || load < 0.0f) return 0;
+            int p = static_cast<int>(load * 100.0f + 0.5f);
+            return static_cast<uint8_t>(p > 127 ? 127 : p);
+          };
+          uint8_t reply[6] = {0xF0, 0x7D, 0x42,
+                              pct(cpu.GetAvgCpuLoad()), pct(cpu.GetMaxCpuLoad()), 0xF7};
+          midi.SendMessage(reply, 6);
         }
       } break;
       default:

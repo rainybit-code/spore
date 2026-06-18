@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The
+  Cortex-M7 handles denormal floats on a slow path and libDaisy only enables FPU
+  *access*, so a decaying `ReverbSc` tail (no denormal guard of its own) stalled the
+  FPU as it rang out. FZ also protects the delay/filter feedback paths.
+- **CPU-load metering**: instrument the audio callback with `CpuLoadMeter` and report
+  avg/peak load over SysEx (query `F0 7D 02 F7` → reply `F0 7D 42 <avg%> <max%> F7`).
+  Propagator shows it live. See `docs/MIDI_PROTOCOL.md`.
 
 ## [v0.1.1] - 2026-06-17
 - Add version exchange cmd
