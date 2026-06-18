@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.2.0] - 2026-06-18
 - **Chaos modulation sources**: a Lorenz attractor (smooth) + logistic map (stepped)
   added to the shared `ModEngine` (`mod/modulation.h`) — deterministic-but-never-repeating
   movement. Wired into **Generative** (chaotic filter sway + wavetable-scan drift) and
