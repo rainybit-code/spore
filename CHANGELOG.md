@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.3.0] - 2026-06-19
 - **Control echo (device -> editor)**: the firmware now transmits a CC when a hardware
   control changes -- mode/FX/VAR toggles (CC 16/17/93), the 12 shift-layer knobs (CC 20-31),
   and bypass (CC 91) -- so Propagator mirrors the physical surface. Change-detected, sent
