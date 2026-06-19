@@ -36,6 +36,9 @@ class SynthMode : public IMode {
     lfo2_.Init(sample_rate / params::audio::kBlockSize);
   }
 
+  // Entering Synth: release every voice so no notes from a previous session linger.
+  void OnEnter() override { for (int i = 0; i < kVoices; ++i) v_[i].NoteOff(); steal_ = 0; }
+
   void Control(Hothouse& hw, ModContext& ctx) override {
     using namespace params::synth;
     const SynthParams& p = g_synthParams;

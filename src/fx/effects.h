@@ -66,6 +66,17 @@ class GlobalFx {
   }
   Mode GetMode() const { return mode_; }
 
+  // Silence the FX entirely: clear the delay lines, reverb tail and filter state. Used on
+  // a mode change so the previous mode's tail can't linger (or keep costing CPU) into the
+  // next one. Params are re-applied by SetParams() on the next block.
+  void Reset() {
+    s_fx_del_l.Reset();
+    s_fx_del_r.Reset();
+    lp_l_ = lp_r_ = 0.0f;
+    reverb_.Init(sr_);   // clears ReverbSc's internal state/tail
+    wet_ramp_ = 0.0f;
+  }
+
   // Tempo-synced delay: bpm + division (0 = free/knob, 1..4 = 1/4 1/8 1/8. 1/16).
   void SetTempo(float bpm) { bpm_ = bpm; }
   void SetSync(int division) { sync_ = division; }

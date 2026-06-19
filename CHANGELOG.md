@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Fix Generative-mode CPU overload / MIDI lockup.** Generative ran its own `ReverbSc`
+  **and** the global FX reverb (double reverb) → the audio callback overran and starved MIDI.
+  The global FX path is now skipped in Generative (it has its own reverb).
+- **Clear processing on mode change.** New `GlobalFx::Reset()` clears the FX delay/reverb
+  tail, and each mode now implements `OnEnter()` to silence its voices/grains/reverb, so
+  nothing from the previous mode lingers (or keeps costing CPU) into the next.
+- **CPU watchdog.** If the callback stays overloaded (~150 ms), `g_overload` latches: the
+  global FX is shed and the onboard LED fast-blinks (~5 Hz). Cleared by a mode/FX change —
+  i.e. change something to regain control.
 
 ## [v0.2.1] - 2026-06-18
 - **Steps mod-matrix source** (#8): the logistic-map (stepped) chaos `ChaosStep` is now a

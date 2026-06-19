@@ -58,6 +58,13 @@ class GenerativeMode : public IMode {
 
   void Action() override { walk_.Init(&rng_); RollPatch(); timer_ = 0.0f; }  // re-seed: new walk + timbre
 
+  // Entering Generative: silence voices + clear its dedicated reverb tail so it starts clean.
+  void OnEnter() override {
+    for (int i = 0; i < kVoices; ++i) { voices_[i].NoteOff(); off_[i] = -1.0f; }
+    s_gen_reverb.Init(sr_);   // params re-applied by Control() on the next block
+    timer_ = 0.0f;
+  }
+
   void Control(Hothouse& hw, ModContext& ctx) override {
     quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
 

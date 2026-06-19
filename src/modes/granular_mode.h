@@ -44,6 +44,12 @@ class GranularMode : public IMode {
 
   void Action() override { frozen_ = !frozen_; }  // toggle freeze
 
+  // Entering Granular: drop any in-flight grains so it starts clean (keep the buffer).
+  void OnEnter() override {
+    for (int i = 0; i < params::granular::kMaxGrains; ++i) grains_[i].active = false;
+    spawn_phase_ = 0.0f;
+  }
+
   void Control(Hothouse& hw, ModContext& ctx) override {
     using namespace params::granular;
     quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);

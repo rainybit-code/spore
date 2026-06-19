@@ -51,6 +51,7 @@ GenerativeMode  generative_mode;
 IMode*          g_modes[MODE_COUNT];
 
 volatile int    g_active = MODE_SYNTH;
+volatile bool   g_overload = false;       // CPU watchdog: sustained-overload -> shed load
 bool            g_bypass = false;
 bool            g_fx_edit_latch = false;  // distinguishes FS1 tap vs hold-to-edit
 uint32_t        g_last_midi_ms = 0;       // for the onboard MIDI-activity LED
@@ -92,11 +93,15 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
                              : (g_modeSel >= 0 ? g_modeSel : tog_mode);
   if (sel != g_active) {
     g_active = sel;
-    g_modes[g_active]->OnEnter();
+    g_modes[g_active]->OnEnter();   // new mode clears its own voices/grains/reverb
+    g_fx.Reset();                   // clear the global FX tail so nothing lingers across
+    g_overload = false;             // a deliberate mode change = the user regaining control
   }
 
   // FX: forced select (web CC 17 / moved toggle) wins, else follow TOGGLE 3.
   int fxsel = g_fxSel >= 0 ? g_fxSel : tog_fx;
+  static int last_fxsel = -1;
+  if (fxsel != last_fxsel) { last_fxsel = fxsel; g_overload = false; }   // FX change = regain control
   g_fx.SetMode(static_cast<GlobalFx::Mode>(fxsel));
   g_fx.SetTempo(g_clock.Bpm());   // tempo-synced delay follows the local clock
   g_fx.SetSync(g_delaySync);
@@ -135,7 +140,10 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     }
   } else {
     m->ProcessBlock(in, out, size);
-    g_fx.Process(out[0], out[1], size);  // decoupled global FX on the active mode
+    // Global FX runs for Synth/Granular only: Generative has its own reverb (running both
+    // = double ReverbSc = overload), and the CPU watchdog sheds it under sustained load.
+    if (g_active != MODE_GENERATIVE && !g_overload)
+      g_fx.Process(out[0], out[1], size);
     // Global safety limiter: hard-clamp to [-1, 1] so a resonant filter, stacked
     // grains, or runaway delay feedback can never blast the output.
     for (size_t i = 0; i < size; ++i) {
@@ -144,6 +152,14 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     }
   }
   g_cpu.OnBlockEnd();
+
+  // CPU watchdog: if the callback stays overloaded for ~150 ms, latch g_overload so we shed
+  // the global FX (above) and fast-blink the LED. Cleared by a mode/FX change (regain control).
+  {
+    static int over = 0;
+    if (g_cpu.GetAvgCpuLoad() > 0.95f) { if (++over > 150) g_overload = true; }
+    else over = 0;
+  }
 }
 
 int main() {
@@ -197,12 +213,13 @@ int main() {
   while (true) {
     if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu, g_mod)) g_last_midi_ms = System::GetNow();
     g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
-    // Onboard LED: ~1 Hz heartbeat = app is alive; goes solid while MIDI arrives.
+    // Onboard LED: ~1 Hz heartbeat = app is alive; solid while MIDI arrives; a fast
+    // ~5 Hz blink warns that the CPU watchdog tripped (change mode/FX to recover).
     {
       uint32_t now = System::GetNow();
       bool heartbeat = ((now / 500) % 2) == 0;
       bool midi_active = (now - g_last_midi_ms) < 100;
-      hw.seed.SetLed(heartbeat || midi_active);
+      hw.seed.SetLed(g_overload ? (((now / 100) % 2) == 0) : (heartbeat || midi_active));
     }
 
     // LED feedback: LED1 = engaged (lit) / bypassed (off), mid while editing FX;
