@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Control echo (device -> editor)**: the firmware now transmits a CC when a hardware
+  control changes -- mode/FX/VAR toggles (CC 16/17/93), the 12 shift-layer knobs (CC 20-31),
+  and bypass (CC 91) -- so Propagator mirrors the physical surface. Change-detected, sent
+  from the main loop (not the audio ISR). First half of live 2-way sync.
 - **Master output stage**: a switchable **LP/BP/HP filter** (cutoff + resonance) and a
   **master volume**, applied after the global FX and before the limiter (`fx/master.h`).
   Filter type 0 = off (volume only). CC 7 (vol), 88 (type), 89 (cutoff), 90 (res).

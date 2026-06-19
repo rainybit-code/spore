@@ -170,6 +170,42 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   }
 }
 
+// Send a CC out (channel 1) to mirror our state to the editor.
+static inline void TxCc(MidiUsbHandler& m, int cc, float v01) {
+  int v = static_cast<int>(v01 * 127.0f + 0.5f);
+  uint8_t msg[3] = {0xB0, static_cast<uint8_t>(cc),
+                    static_cast<uint8_t>(v < 0 ? 0 : (v > 127 ? 127 : v))};
+  m.SendMessage(msg, 3);
+}
+
+// Device -> editor mirror: when a hardware control (mode/FX/VAR toggle, the 12
+// shift-layer knobs, or bypass) changes, transmit the matching CC so Propagator
+// follows the physical surface. Change-detected; runs in the main loop (not the ISR).
+static void EchoControls(MidiUsbHandler& m, Hothouse& hw) {
+  using namespace params::midi;
+  static int   lMode = -1, lFx = -1, lVar = -1, lByp = -1;
+  static float lMK[ShiftKnobs::kKnobs] = {-1, -1, -1, -1, -1, -1};
+  static float lFK[ShiftKnobs::kKnobs] = {-1, -1, -1, -1, -1, -1};
+
+  int mode = g_active;
+  int fx   = static_cast<int>(g_fx.GetMode());
+  int var  = (g_varSel >= 0) ? g_varSel : TogglePos(hw, Hothouse::TOGGLESWITCH_2);
+  int byp  = g_bypass ? 1 : 0;
+  if (mode != lMode) { lMode = mode; TxCc(m, kCcModeSelect, mode / 2.0f); }
+  if (fx   != lFx)   { lFx = fx;     TxCc(m, kCcFxSelect,   fx   / 2.0f); }
+  if (var  != lVar)  { lVar = var;   TxCc(m, kCcVar,        var  / 2.0f); }
+  if (byp  != lByp)  { lByp = byp;   TxCc(m, kCcFootsw1,    byp ? 1.0f : 0.0f); }
+
+  const float* mk = g_shift.Values(ShiftKnobs::MODE);
+  const float* fk = g_shift.Values(ShiftKnobs::FX);
+  for (int i = 0; i < ShiftKnobs::kKnobs; ++i) {
+    float dm = mk[i] - lMK[i]; if (dm < 0) dm = -dm;
+    float df = fk[i] - lFK[i]; if (df < 0) df = -df;
+    if (dm > 0.008f) { lMK[i] = mk[i]; TxCc(m, kCcModeKnobBase + i, mk[i]); }
+    if (df > 0.008f) { lFK[i] = fk[i]; TxCc(m, kCcFxKnobBase + i, fk[i]); }
+  }
+}
+
 int main() {
   hw.Init();
 
@@ -221,6 +257,7 @@ int main() {
 
   while (true) {
     if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu, g_mod, g_master, g_bypass, g_varSel)) g_last_midi_ms = System::GetNow();
+    EchoControls(midi, hw);             // mirror physical control changes back to the editor
     g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
     // Onboard LED: ~1 Hz heartbeat = app is alive; solid while MIDI arrives; a fast
     // ~5 Hz blink warns that the CPU watchdog tripped (change mode/FX to recover).

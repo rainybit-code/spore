@@ -41,6 +41,11 @@ means depends on the active mode. All numbers are defined in
 | 93     | **VAR (Toggle 2)** per-mode variant (thirds: 0 / 1 / 2) |
 | 119    | Reboot to **DFU** bootloader when value ≥ 64 (remote flashing) |
 
+**Device → editor echo (live 2-way sync):** the firmware also *transmits* these CCs when the
+matching hardware control changes — mode/FX/VAR toggles (16/17/93), the 12 shift-layer knobs
+(20–31), and bypass (91) — so the editor mirrors the physical surface. Change-detected and
+sent from the main loop. The editor applies incoming CC without echoing it back (no loop).
+
 **Synth-panel CCs** (`CC = 40 + SP_* index`, see
 [`config/synth_params.h`](../src/config/synth_params.h)):
 
