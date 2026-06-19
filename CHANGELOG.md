@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.3.1] - 2026-06-19
 - **Generative steering** (`config/gen_params.h`, CC 32-37): the timbre still rolls
   **randomly** on re-seed, but the roll is now *biased* by **Brightness** + **Texture**, and
   behaviour is steerable via **Chord** (stacking), **Swell** (note length) and **Motion**
