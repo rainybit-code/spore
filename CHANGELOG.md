@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Master output stage**: a switchable **LP/BP/HP filter** (cutoff + resonance) and a
+  **master volume**, applied after the global FX and before the limiter (`fx/master.h`).
+  Filter type 0 = off (volume only). CC 7 (vol), 88 (type), 89 (cutoff), 90 (res).
+- **MIDI control of the footswitches + VAR switch**: CC 91 = bypass, CC 92 = mode action
+  (freeze / re-seed), CC 93 = TOGGLE 2 variant. Modes now read an overridable `ctx.variant`
+  instead of reading Toggle 2 directly, so the whole control surface is drivable over MIDI.
 - **Fix Generative-mode CPU overload / MIDI lockup.** Generative ran its own `ReverbSc`
   **and** the global FX reverb (double reverb) → the audio callback overran and starved MIDI.
   The global FX path is now skipped in Generative (it has its own reverb).

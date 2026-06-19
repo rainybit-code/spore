@@ -27,6 +27,9 @@ struct ModContext {
                            // -- use instead of hw.GetKnobValue so the FX shift-layer
                            //    doesn't disturb mode params. Index with KNOB_1..KNOB_6.
   float          tempoBpm; // current clock tempo (local or MIDI), for tempo-synced LFOs
+  int            variant;  // TOGGLE 2 position (0/1/2), MIDI-overridable -- per-mode
+                           // variant (waveform / pitch-quantize / scale). Read this
+                           // instead of TogglePos(TOGGLESWITCH_2) so MIDI can drive it.
 };
 
 class IMode {

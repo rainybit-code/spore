@@ -26,6 +26,7 @@
 #include "io/knobs.h"
 #include "io/midi_in.h"
 #include "fx/effects.h"
+#include "fx/master.h"
 #include "modes/mode.h"
 #include "modes/synth_mode.h"
 #include "modes/granular_mode.h"
@@ -41,6 +42,7 @@ ModEngine       g_mod;
 AnalogSensors   g_sensors;
 ShiftKnobs      g_shift;
 GlobalFx        DSY_SDRAM_BSS g_fx;  // ReverbSc ~400KB -> must live in SDRAM
+MasterChain     g_master;            // master filter (LP/BP/HP) + volume on the final mix
 MidiClock       g_clock;             // local tempo, locks to incoming MIDI clock
 int             g_delaySync = 0;     // delay tempo-sync division (0 = free)
 daisy::CpuLoadMeter g_cpu;           // audio-callback load; reported over SysEx (cmd 0x02)
@@ -66,6 +68,7 @@ static constexpr bool kBenchForceSynth = false;
 // the physical toggles take over the instant they're actually moved (below).
 int g_modeSel = MODE_SYNTH;
 int g_fxSel = 0;  // GlobalFx::OFF
+int g_varSel = -1;  // TOGGLE 2 variant: -1 = follow toggle, >=0 = forced (web CC 93)
 
 // extended synth params (set over MIDI CC 40+ from the Propagator synth panel)
 synthbox::SynthParams synthbox::g_synthParams;
@@ -83,10 +86,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   // position (so Spore boots quiet but the hardware switches still work).
   static int last_tog_mode = CurrentMode(hw);
   static int last_tog_fx   = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  static int last_tog_var  = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
   int tog_mode = CurrentMode(hw);
   int tog_fx   = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
+  int tog_var  = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
   if (tog_mode != last_tog_mode) { last_tog_mode = tog_mode; g_modeSel = -1; }
   if (tog_fx   != last_tog_fx)   { last_tog_fx = tog_fx;     g_fxSel = -1; }
+  if (tog_var  != last_tog_var)  { last_tog_var = tog_var;   g_varSel = -1; }
 
   // Mode: forced select (web CC 16 / moved toggle) wins, else follow TOGGLE 1.
   int sel = kBenchForceSynth ? MODE_SYNTH
@@ -128,9 +134,10 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   g_fx.SetParams(fk[Hothouse::KNOB_1], fk[Hothouse::KNOB_2], fk[Hothouse::KNOB_3],
                  fk[Hothouse::KNOB_4], fk[Hothouse::KNOB_5], fk[Hothouse::KNOB_6]);
 
-  // Mode params from the (latched) MODE layer.
+  // Mode params from the (latched) MODE layer. VAR = forced (web CC 93) or TOGGLE 2.
+  int variant = g_varSel >= 0 ? g_varSel : tog_var;
   IMode*     m = g_modes[g_active];
-  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE), g_clock.Bpm()};
+  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE), g_clock.Bpm(), variant};
   m->Control(hw, ctx);
 
   if (g_bypass) {
@@ -144,6 +151,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     // = double ReverbSc = overload), and the CPU watchdog sheds it under sustained load.
     if (g_active != MODE_GENERATIVE && !g_overload)
       g_fx.Process(out[0], out[1], size);
+    g_master.Process(out[0], out[1], size);  // master filter (LP/BP/HP) + volume
     // Global safety limiter: hard-clamp to [-1, 1] so a resonant filter, stacked
     // grains, or runaway delay feedback can never blast the output.
     for (size_t i = 0; i < size; ++i) {
@@ -194,6 +202,7 @@ int main() {
   // Global FX (in SDRAM) + shift-layer with sensible FX starting points:
   //   mix .30 | time .40 | feedback .35 | tone .70 | rev decay .60 | rev damp .70
   g_fx.Init(sr);
+  g_master.Init(sr);   // master filter + volume (filter OFF, volume unity by default)
   g_clock.Init();
   const float fx_defaults[ShiftKnobs::kKnobs] = {0.30f, 0.40f, 0.35f,
                                                  0.70f, 0.60f, 0.70f};
@@ -211,7 +220,7 @@ int main() {
   hw.StartAudio(AudioCallback);
 
   while (true) {
-    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu, g_mod)) g_last_midi_ms = System::GetNow();
+    if (PumpMidi(midi, g_modes[g_active], g_shift, g_modeSel, g_fxSel, g_clock, g_delaySync, g_cpu, g_mod, g_master, g_bypass, g_varSel)) g_last_midi_ms = System::GetNow();
     g_clock.Update(System::GetNow());   // drop back to internal tempo if clock stops
     // Onboard LED: ~1 Hz heartbeat = app is alive; solid while MIDI arrives; a fast
     // ~5 Hz blink warns that the CPU watchdog tripped (change mode/FX to recover).

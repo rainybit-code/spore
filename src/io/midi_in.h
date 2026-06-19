@@ -15,6 +15,7 @@
 #include "config/params.h"
 #include "config/synth_params.h"
 #include "mod/modulation.h"
+#include "fx/master.h"
 #include "io/knobs.h"
 #include "io/clock.h"
 #include "modes/mode.h"
@@ -32,7 +33,8 @@ inline void InitMidi(daisy::MidiUsbHandler& midi) {
 // Returns true if any event was processed (used to blink a MIDI-activity LED).
 inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift,
                      int& modeSel, int& fxSel, MidiClock& clock, int& delaySync,
-                     daisy::CpuLoadMeter& cpu, ModEngine& modEngine) {
+                     daisy::CpuLoadMeter& cpu, ModEngine& modEngine,
+                     MasterChain& master, bool& bypass, int& varSel) {
   bool active = false;
   midi.Listen();
   while (midi.HasEvents()) {
@@ -84,6 +86,13 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n == params::midi::kCcChaosSpeed)
           modEngine.SetChaosSpeed(params::mod::kChaosSpeedMin +
               v * (params::mod::kChaosSpeedMax - params::mod::kChaosSpeedMin));
+        else if (n == params::midi::kCcMasterVol)      master.SetVolume(v);
+        else if (n == params::midi::kCcMasterFiltType) master.SetFilterType(static_cast<int>(v * 3.99f));
+        else if (n == params::midi::kCcMasterFiltCut)  master.SetCutoff(v);
+        else if (n == params::midi::kCcMasterFiltRes)  master.SetRes(v);
+        else if (n == params::midi::kCcFootsw1)        bypass = (cc.value >= 64);
+        else if (n == params::midi::kCcFootsw2)        { if (cc.value >= 64) mode->Action(); }
+        else if (n == params::midi::kCcVar)            varSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
         else if (n == params::midi::kCcSysReboot && cc.value >= 64)
           daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
       } break;

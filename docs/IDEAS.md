@@ -38,10 +38,6 @@ Legend: 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferred) · 🅲 
 
 ## Modes & sound
 
-- 🔜 **Master output stage: filter + volume** — a global LP/BP/HP filter (one
-  `daisysp::Svf` gives all three outputs → type-select) + cutoff/res, then a master
-  **volume**, placed after the global FX and before the limiter in `main.cpp`'s callback.
-  CC-controlled (+ Propagator knobs/segment). Cheap; the SVF outputs map straight to LP/BP/HP.
 - 💡 **More FX / FX modes** — shimmer (pitch-shifted reverb), modulated/chorus delay,
   ping-pong, per-mode FX presets, or a second FX slot (delay → reverb in series).
 - 💡 **More modes** — implement `IMode` (`modes/mode.h`) and add to the array in
@@ -57,12 +53,6 @@ Legend: 🔜 next · 🅰️ tier-1 (core) · 🅱️ tier-2 (deferred) · 🅲 
 
 Full protocol spec: [`MIDI_PROTOCOL.md`](MIDI_PROTOCOL.md).
 
-- 🔜 **MIDI control of the footswitches + VAR switch** — CCs for FOOTSW 1 (engage/bypass),
-  FOOTSW 2 (mode action: freeze / re-seed), and TOGGLE 2 (per-mode variant). FS1/FS2 are a
-  CC handler in `midi_in.h` (needs access to `g_bypass` + the active mode's `Action()`);
-  the VAR switch is cleanest as an overridable `variant` on `ModContext` (like `g_modeSel`),
-  so modes read `ctx.variant` instead of `TogglePos(TOGGLESWITCH_2)` directly. + Propagator
-  buttons/segment so the whole control surface is drivable from the editor.
 - 🔜 **2-way sync (SysEx)** — full patch dump/load so the editor mirrors the device.
   Needs the central `Patch` store.
 - 🔜 **Preset librarian** — patches saved in the browser (JSON/localStorage) **and**

@@ -52,7 +52,7 @@ class GranularMode : public IMode {
 
   void Control(Hothouse& hw, ModContext& ctx) override {
     using namespace params::granular;
-    quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
+    quantize_ = ctx.variant;   // TOGGLE 2 (or MIDI override): free / octaves / unison
 
     float k_size = ctx.knob[Hothouse::KNOB_1];
     float k_dens = ctx.knob[Hothouse::KNOB_2];

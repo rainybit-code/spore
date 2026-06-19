@@ -24,6 +24,7 @@ means depends on the active mode. All numbers are defined in
 
 | CC#    | Target                          |
 |--------|---------------------------------|
+| 7      | **Master volume** (standard MIDI volume) |
 | 14     | Internal clock **tempo** (0..127 → 40..200 BPM) — see §1a |
 | 15     | **Delay sync** division (0 off · 1 = 1/4 · 2 = 1/8 · 3 = dotted-1/8 · 4 = 1/16) |
 | 16     | Mode select (thirds: 0..42 synth / 43..85 granular / 86..127 generative) |
@@ -32,6 +33,12 @@ means depends on the active mode. All numbers are defined in
 | 20–25  | MODE-layer knobs 1–6 (active mode's macros, soft-takeover) |
 | 26–31  | FX-layer knobs 1–6 (mix / delay time / fb / tone / rev decay / damp) |
 | 40–87  | Synth panel params (`SP_*`, `kCcSynthBase + index`; full list below) |
+| 88     | **Master filter type** (0 off / 1 LP / 2 BP / 3 HP) — post-FX output filter |
+| 89     | **Master filter cutoff** |
+| 90     | **Master filter resonance** |
+| 91     | **Footswitch 1** — value ≥ 64 = bypassed, < 64 = engaged |
+| 92     | **Footswitch 2** — value ≥ 64 triggers the mode action (freeze / re-seed) |
+| 93     | **VAR (Toggle 2)** per-mode variant (thirds: 0 / 1 / 2) |
 | 119    | Reboot to **DFU** bootloader when value ≥ 64 (remote flashing) |
 
 **Synth-panel CCs** (`CC = 40 + SP_* index`, see

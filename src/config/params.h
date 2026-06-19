@@ -150,6 +150,16 @@ constexpr float kPickupBand    = 0.03f;     // soft-takeover catch window (0..1)
 }  // namespace fx
 
 // ----------------------------------------------------------------------------
+//  Master output stage   (fx/master.h: switchable filter + volume on the mix)
+//    Applied after the global FX, before the safety limiter. MIDI-controlled.
+// ----------------------------------------------------------------------------
+namespace master {
+constexpr float kCutMinHz = 40.0f;     // filter cutoff range (LP / BP / HP)
+constexpr float kCutMaxHz = 18000.0f;
+constexpr float kResMax   = 0.95f;     // keep below self-oscillation
+}  // namespace master
+
+// ----------------------------------------------------------------------------
 //  MIDI management interface   (USB MIDI <-> browser WebMIDI tool)
 //    See docs/MIDI_PROTOCOL.md for the full contract (CC map + SysEx).
 //    Phase 1 (implemented): CC drives the live knob values as "virtual knobs".
@@ -164,6 +174,14 @@ constexpr int kCcSynthBase    = 40;  // CC 40.. -> extended synth params (see co
 constexpr int kCcTempo        = 14;  // CC 14 -> internal clock BPM (0..127 -> 40..200)
 constexpr int kCcDelaySync    = 15;  // CC 15 -> delay tempo-sync division (0 off / 1/4 / 1/8 / 1/8. / 1/16)
 constexpr int kCcSysReboot    = 119; // CC 119 >=64 -> reboot to STM DFU bootloader (remote flashing)
+// Master output stage + control-surface-over-MIDI
+constexpr int kCcMasterVol      = 7;   // CC 7  -> master volume (standard MIDI volume)
+constexpr int kCcMasterFiltType = 88;  // CC 88 -> master filter (0 off / 1 LP / 2 BP / 3 HP)
+constexpr int kCcMasterFiltCut  = 89;  // CC 89 -> master filter cutoff
+constexpr int kCcMasterFiltRes  = 90;  // CC 90 -> master filter resonance
+constexpr int kCcFootsw1        = 91;  // CC 91 >=64 -> bypass on, <64 -> engaged
+constexpr int kCcFootsw2        = 92;  // CC 92 >=64 -> mode action (freeze / re-seed)
+constexpr int kCcVar            = 93;  // CC 93 -> TOGGLE 2 variant (thirds: 0 / 1 / 2)
 }  // namespace midi
 
 }  // namespace params

@@ -66,7 +66,7 @@ class GenerativeMode : public IMode {
   }
 
   void Control(Hothouse& hw, ModContext& ctx) override {
-    quantize_ = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
+    quantize_ = ctx.variant;   // TOGGLE 2 (or MIDI override): chromatic / penta / major
 
     float k_tempo = ctx.knob[Hothouse::KNOB_1];
     float k_range = ctx.knob[Hothouse::KNOB_2];
