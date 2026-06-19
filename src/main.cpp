@@ -72,6 +72,8 @@ int g_varSel = -1;  // TOGGLE 2 variant: -1 = follow toggle, >=0 = forced (web C
 
 // extended synth params (set over MIDI CC 40+ from the Propagator synth panel)
 synthbox::SynthParams synthbox::g_synthParams;
+// generative steering params (set over MIDI CC 32+ from the Propagator GENERATIVE pod)
+synthbox::GenParams synthbox::g_genParams;
 
 Led led1, led2;
 

@@ -32,6 +32,7 @@ means depends on the active mode. All numbers are defined in
 | 18     | **Chaos speed** (Lorenz evolution rate, 0..127 → slow…busy) — global |
 | 20–25  | MODE-layer knobs 1–6 (active mode's macros, soft-takeover) |
 | 26–31  | FX-layer knobs 1–6 (mix / delay time / fb / tone / rev decay / damp) |
+| 32–37  | **Generative** pod — chord · swell · motion · brightness · texture · wander (`kCcGenBase`; biases the random roll + steers behaviour) |
 | 40–87  | Synth panel params (`SP_*`, `kCcSynthBase + index`; full list below) |
 | 88     | **Master filter type** (0 off / 1 LP / 2 BP / 3 HP) — post-FX output filter |
 | 89     | **Master filter cutoff** |

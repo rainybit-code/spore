@@ -24,6 +24,7 @@
 #include "dsp/voice.h"
 #include "modes/mode.h"
 #include "config/params.h"
+#include "config/gen_params.h"
 
 namespace synthbox {
 
@@ -81,8 +82,11 @@ class GenerativeMode : public IMode {
     drift_   = k_drift;
     revMix_  = 0.30f + k_rev * 0.65f;                   // lots of reverb at the top
 
+    const float bright = g_genParams.v[GP_BRIGHT];   // live cutoff bias (dark .. bright)
+    const float wander = g_genParams.v[GP_WANDER];   // continuous timbre-morph depth
     float tone = 300.0f + k_tone * k_tone * (9000.0f - 300.0f);
-    cutoff_ = tone * (1.0f + drift_ * 0.6f * ctx.mod.ChaosX());   // chaotic filter sway
+    tone *= 0.45f + bright * 1.25f;                              // Brightness biases the cutoff
+    cutoff_ = tone * (1.0f + (drift_ * 0.3f + wander * 0.6f) * ctx.mod.ChaosX());  // chaotic sway
     center_ = 48.0f + (ctx.sensors.Light() - 0.5f) * 12.0f;    // sensor nudges pitch center
 
     s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);
@@ -90,7 +94,7 @@ class GenerativeMode : public IMode {
 
     // Per-block voice params come from the seeded patch (timbre) + macro knobs.
     // Scan drifts slowly so a wavetable patch keeps evolving; drift widens detune.
-    float scan = daisysp::fclamp(pScan_ + drift_ * 0.3f * ctx.mod.ChaosY(), 0.0f, 1.0f);
+    float scan = daisysp::fclamp(pScan_ + (drift_ * 0.15f + wander * 0.35f) * ctx.mod.ChaosY(), 0.0f, 1.0f);
     const float det = pDetune_ + drift_ * 0.008f;
     for (int i = 0; i < kVoices; ++i) {
       voices_[i].SetWave(pWave_);
@@ -159,18 +163,22 @@ class GenerativeMode : public IMode {
                                   daisysp::Oscillator::WAVE_POLYBLEP_TRI,
                                   daisysp::Oscillator::WAVE_POLYBLEP_SQUARE};
     static const float kRatios[4] = {0.5f, 1.0f, 2.0f, 3.0f};
+    // Still a random roll -- just WEIGHTED by the Brightness / Texture biases so re-seed
+    // keeps surprising you within the character you've dialed in (GP_BRIGHT / GP_TEXTURE).
+    const float br = g_genParams.v[GP_BRIGHT];     // 0 dark .. 1 bright
+    const float tx = g_genParams.v[GP_TEXTURE];    // 0 clean .. 1 wild
     pEngine_  = (rng_.Unipolar() < 0.5f) ? 0 : 1;                 // analog or wavetable
     pWave_    = kWaves[static_cast<int>(rng_.Unipolar() * 2.999f)];
     pBank_    = static_cast<int>(rng_.Unipolar() * 4.999f);       // wavetable bank 0..4
-    pScan_    = rng_.Unipolar();
-    pFmAmt_   = (rng_.Unipolar() < 0.4f) ? rng_.Unipolar() * 0.30f : 0.0f;
+    pScan_    = daisysp::fclamp(rng_.Unipolar() * 0.6f + (br - 0.5f) * 0.9f + 0.2f, 0.0f, 1.0f);
+    pFmAmt_   = (rng_.Unipolar() < 0.20f + tx * 0.55f) ? rng_.Unipolar() * (0.12f + tx * 0.45f) : 0.0f;
     pFmRatio_ = kRatios[static_cast<int>(rng_.Unipolar() * 3.999f)];
-    pFold_    = (rng_.Unipolar() < 0.3f) ? rng_.Unipolar() * 0.40f : 0.0f;
+    pFold_    = (rng_.Unipolar() < 0.12f + tx * 0.45f) ? rng_.Unipolar() * (0.20f + tx * 0.45f) : 0.0f;
     pDetune_  = 0.003f + rng_.Unipolar() * 0.012f;
-    pRes_     = 0.10f + rng_.Unipolar() * 0.30f;
-    pDrive_   = (rng_.Unipolar() < 0.5f) ? rng_.Unipolar() * 0.5f : 0.0f;   // sometimes gritty
-    pFilter_  = (rng_.Unipolar() < 0.5f) ? 0 : 1;                            // Svf or Moog
-    pUni_     = (rng_.Unipolar() < 0.6f) ? 1 : 2;                            // keep CPU sane
+    pRes_     = daisysp::fclamp(0.10f + rng_.Unipolar() * 0.30f + tx * 0.20f, 0.0f, 0.85f);
+    pDrive_   = (rng_.Unipolar() < 0.30f + tx * 0.50f) ? rng_.Unipolar() * (0.30f + tx * 0.55f) : 0.0f;
+    pFilter_  = (rng_.Unipolar() < 0.30f + tx * 0.45f) ? 1 : 0;              // Svf or fat Moog
+    pUni_     = (rng_.Unipolar() < 0.35f + tx * 0.55f) ? 2 : 1;              // keep CPU sane
     pSubOct_  = (rng_.Unipolar() < 0.5f) ? 0.5f : 0.25f;
     pSubWave_ = (rng_.Unipolar() < 0.5f) ? daisysp::Oscillator::WAVE_POLYBLEP_SQUARE
                                          : daisysp::Oscillator::WAVE_SIN;
@@ -178,14 +186,18 @@ class GenerativeMode : public IMode {
 
   // Seed a new note (sometimes a small chord) from the random walk.
   void SeedEvent() {
-    const float w = walk_.Process(0.25f + drift_ * 0.5f);   // -1..1
+    const float motion = g_genParams.v[GP_MOTION];   // walk step: gentle drift -> wide leaps
+    const float swell  = g_genParams.v[GP_SWELL];    // note length: short stabs -> long pads
+    const float chordAmt = g_genParams.v[GP_CHORD];  // single notes -> triads
+
+    const float w = walk_.Process(0.08f + motion * 0.7f);   // -1..1
     float root = center_ + w * range_;
 
     int chord = 1;
-    if (rng_.Unipolar() < density_) chord = (rng_.Unipolar() < 0.45f) ? 3 : 2;
+    if (rng_.Unipolar() < chordAmt) chord = (rng_.Unipolar() < 0.45f) ? 3 : 2;
 
-    const float atk = 1.2f + drift_ * 2.5f + rng_.Unipolar() * 1.0f;          // ~1.2-4.7 s rise
-    const float rel = 5.0f + (1.0f - density_) * 5.0f + rng_.Unipolar() * 2.0f; // ~5-12 s fall
+    const float atk = (0.2f + swell * 3.5f) * (0.7f + 0.6f * rng_.Unipolar());   // stab .. long rise
+    const float rel = (0.8f + swell * 10.0f) * (0.8f + 0.4f * rng_.Unipolar());  // short .. long fall
     const float pan = rng_.Bipolar() * 0.85f;     // place the whole event in the field
 
     static const float kStack[3] = {0.0f, 7.0f, 4.0f};  // root, fifth, third

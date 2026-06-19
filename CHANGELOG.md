@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Generative steering** (`config/gen_params.h`, CC 32-37): the timbre still rolls
+  **randomly** on re-seed, but the roll is now *biased* by **Brightness** + **Texture**, and
+  behaviour is steerable via **Chord** (stacking), **Swell** (note length) and **Motion**
+  (walk step), plus a **Wander** morph-depth. Synth params stay synth-only (no reuse).
 
 ## [v0.3.0] - 2026-06-19
 - **Control echo (device -> editor)**: the firmware now transmits a CC when a hardware

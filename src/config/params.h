@@ -182,6 +182,7 @@ constexpr int kCcMasterFiltRes  = 90;  // CC 90 -> master filter resonance
 constexpr int kCcFootsw1        = 91;  // CC 91 >=64 -> bypass on, <64 -> engaged
 constexpr int kCcFootsw2        = 92;  // CC 92 >=64 -> mode action (freeze / re-seed)
 constexpr int kCcVar            = 93;  // CC 93 -> TOGGLE 2 variant (thirds: 0 / 1 / 2)
+constexpr int kCcGenBase        = 32;  // CC 32.. -> Generative pod params (see config/gen_params.h)
 }  // namespace midi
 
 }  // namespace params

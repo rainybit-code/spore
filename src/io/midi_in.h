@@ -14,6 +14,7 @@
 #include "util/CpuLoadMeter.h"
 #include "config/params.h"
 #include "config/synth_params.h"
+#include "config/gen_params.h"
 #include "mod/modulation.h"
 #include "fx/master.h"
 #include "io/knobs.h"
@@ -79,6 +80,9 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, IMode* mode, ShiftKnobs& shift
         else if (n >= params::midi::kCcSynthBase &&
                  n < params::midi::kCcSynthBase + SP_COUNT)
           g_synthParams.v[n - params::midi::kCcSynthBase] = v;
+        else if (n >= params::midi::kCcGenBase &&
+                 n < params::midi::kCcGenBase + GP_COUNT)
+          g_genParams.v[n - params::midi::kCcGenBase] = v;
         else if (n == params::midi::kCcTempo)
           clock.SetInternalBpm(40.0f + v * 160.0f);            // 40..200 BPM
         else if (n == params::midi::kCcDelaySync)
