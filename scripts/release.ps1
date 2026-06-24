@@ -38,6 +38,13 @@ if (Test-Path src/config/params.h) {
 git commit -m "release $Version"
 git tag -a $Version -m $Version
 Write-Host "Tagged $Version - pushing main + tag..."
+# git prints its branch-protection bypass advisory to stderr; under
+# ErrorActionPreference='Stop' PowerShell treats that as a terminating error and
+# would abort BEFORE the tag push. Tolerate stderr here and gate on git's real
+# exit code instead, so the tag (which triggers the release CI) always pushes.
+$ErrorActionPreference = 'Continue'
 git push origin main
+if ($LASTEXITCODE -ne 0) { Write-Error "git push origin main failed (exit $LASTEXITCODE)"; exit 1 }
 git push origin $Version
+if ($LASTEXITCODE -ne 0) { Write-Error "git push origin $Version failed (exit $LASTEXITCODE)"; exit 1 }
 Write-Host "Done. The CI release workflow will build and publish $Version."
