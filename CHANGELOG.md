@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Cleaner master output**: a DC blocker (one-pole ~20 Hz high-pass per channel) strips any
+  offset built up by resonant filters / wavefolding / drive before it eats headroom, and the
+  master volume / cutoff / resonance are now smoothed (~15 ms) so stepped MIDI CC and fast knob
+  moves no longer zipper (worst on resonant cutoff).
+- **Reverse grains** in Granular: ~30% of grains now play backwards for a shimmering, less
+  directional texture.
+- **Granular octaves stay in tune.** The octave-quantize (VAR position 2) used `powf(2, k)` for
+  the rate, which isn't bit-exact (worse under `-ffast-math`) so octaves beat against the dry
+  signal. Now the octave shift is an exact `ldexpf` x2^n, and it's taken relative to the dialed
+  Pitch (so the Pitch knob works in octave mode instead of being snapped away).
 
 ## [v0.3.2] - 2026-06-24
 - **Granular pitch is now in tune.** The pitch knob quantizes to whole semitones (it used to

@@ -150,11 +150,18 @@ class GranularMode : public IMode {
       float start = anchor - back;
       while (start < 0.0f) start += kGranBufLen;
       gr.pos = start;
-      // Pitch: center +/- random spread, optional quantize.
+      // Pitch: dialed center +/- random spread, with optional quantize.
       float semi = pitch_semi_ + rng_.Bipolar() * spread_semi_;
-      if (quantize_ == 1) semi = 12.0f * roundf(semi / 12.0f);  // octaves
-      else if (quantize_ == 2) semi = pitch_semi_;              // unison
+      int   oct = 0;
+      if (quantize_ == 1) {            // octaves: keep the dialed pitch, snap the spread to octaves
+        oct = static_cast<int>(roundf((semi - pitch_semi_) / 12.0f));
+        semi = pitch_semi_;
+      } else if (quantize_ == 2) {     // unison: ignore spread entirely
+        semi = pitch_semi_;
+      }
       gr.inc = powf(2.0f, semi / 12.0f);
+      if (oct != 0) gr.inc = ldexpf(gr.inc, oct);      // exact x2^oct so octaves stay perfectly in tune
+      if (rng_.Unipolar() < 0.30f) gr.inc = -gr.inc;   // ~30% play backwards (shimmer/texture)
       gr.phase = 0.0f;
       gr.phase_inc = 1.0f / fmaxf(grain_len_, 1.0f);
       gr.active = true;
