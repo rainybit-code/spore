@@ -21,6 +21,7 @@
 #include "daisysp.h"
 #include "modes/mode.h"
 #include "config/params.h"
+#include "config/gran_params.h"
 
 namespace synthbox {
 
@@ -87,6 +88,12 @@ class GranularMode : public IMode {
     if (spread_semi_ < 0.0f) spread_semi_ = 0.0f;
     scatter_ = k_scatter;
     mix_ = k_mix;
+
+    // Web-pod engine controls (gran_params.h); defaults reproduce the stock sound.
+    rev_       = g_granParams.v[GR_REVERSE];
+    width_     = g_granParams.v[GR_WIDTH];
+    shape_gain_ = 1.0f + g_granParams.v[GR_SHAPE] * 7.0f;          // 1 soft Hann .. 8 hard gate
+    scale_     = static_cast<int>(g_granParams.v[GR_SCALE] * 3.99f);  // 0 off/1 maj/2 min/3 penta
   }
 
   void ProcessBlock(AudioHandle::InputBuffer in,
@@ -110,23 +117,26 @@ class GranularMode : public IMode {
         SpawnGrain();
       }
 
-      // Sum active grains.
-      float wet = 0.0f;
+      // Sum active grains (stereo: each grain has its own pan).
+      float wetL = 0.0f, wetR = 0.0f;
       for (int g = 0; g < params::granular::kMaxGrains; ++g) {
         Grain& gr = grains_[g];
         if (!gr.active) continue;
         float w = s_hann[static_cast<int>(gr.phase * kHannLen) & (kHannLen - 1)];  // Hann (LUT)
-        wet += ReadInterp(gr.pos) * w;
+        w = fminf(1.0f, w * shape_gain_);   // shape: scale + clip = soft Hann -> flat-top gate
+        float sig = ReadInterp(gr.pos) * w;
+        wetL += sig * gr.panL;
+        wetR += sig * gr.panR;
         gr.pos += gr.inc;
         if (gr.pos >= static_cast<float>(kGranBufLen)) gr.pos -= kGranBufLen;
         if (gr.pos < 0.0f) gr.pos += kGranBufLen;
         gr.phase += gr.phase_inc;
         if (gr.phase >= 1.0f) gr.active = false;
       }
-      wet *= 0.5f;  // headroom for overlaps
+      wetL *= 0.5f; wetR *= 0.5f;  // headroom for overlaps
 
-      float s = dry * (1.0f - mix_) + wet * mix_;
-      out[0][i] = out[1][i] = s;
+      out[0][i] = dry * (1.0f - mix_) + wetL * mix_;
+      out[1][i] = dry * (1.0f - mix_) + wetR * mix_;
     }
   }
 
@@ -137,6 +147,8 @@ class GranularMode : public IMode {
     float inc = 1.0f;        // playback rate (pitch)
     float phase = 0.0f;      // 0..1 across grain
     float phase_inc = 0.0f;  // per-sample phase increment
+    float panL = 1.0f;       // stereo gains (both 1 = centered/mono)
+    float panR = 1.0f;
   };
 
   void SpawnGrain() {
@@ -152,6 +164,7 @@ class GranularMode : public IMode {
       gr.pos = start;
       // Pitch: dialed center +/- random spread, with optional quantize.
       float semi = pitch_semi_ + rng_.Bipolar() * spread_semi_;
+      if (scale_ > 0) semi = SnapToScale(semi, scale_);   // scale-lock (off/maj/min/penta)
       int   oct = 0;
       if (quantize_ == 1) {            // octaves: keep the dialed pitch, snap the spread to octaves
         oct = static_cast<int>(roundf((semi - pitch_semi_) / 12.0f));
@@ -161,7 +174,11 @@ class GranularMode : public IMode {
       }
       gr.inc = powf(2.0f, semi / 12.0f);
       if (oct != 0) gr.inc = ldexpf(gr.inc, oct);      // exact x2^oct so octaves stay perfectly in tune
-      if (rng_.Unipolar() < 0.30f) gr.inc = -gr.inc;   // ~30% play backwards (shimmer/texture)
+      if (rng_.Unipolar() < rev_) gr.inc = -gr.inc;    // reverse a fraction of grains (shimmer/texture)
+      // Stereo pan: x in -1..1 scaled by width (x=0 => both channels full = mono).
+      float x = rng_.Bipolar() * width_;
+      gr.panL = 1.0f - fmaxf(0.0f, x);
+      gr.panR = 1.0f + fminf(0.0f, x);
       gr.phase = 0.0f;
       gr.phase_inc = 1.0f / fmaxf(grain_len_, 1.0f);
       gr.active = true;
@@ -174,6 +191,26 @@ class GranularMode : public IMode {
     float frac = pos - i0;
     int   i1 = i0 + 1; if (i1 >= static_cast<int>(kGranBufLen)) i1 = 0;   // branch wrap
     return s_gran_buf[i0] + frac * (s_gran_buf[i1] - s_gran_buf[i0]);
+  }
+
+  // Snap a semitone offset to the nearest degree of a scale (1 major / 2 minor /
+  // 3 pentatonic), keeping the octave. Used for grain pitch when scale-lock is on.
+  static float SnapToScale(float semi, int sc) {
+    static const int kMaj[7] = {0, 2, 4, 5, 7, 9, 11};
+    static const int kMin[7] = {0, 2, 3, 5, 7, 8, 10};
+    static const int kPen[5] = {0, 3, 5, 7, 10};
+    const int* tbl = (sc == 1) ? kMaj : (sc == 2) ? kMin : kPen;
+    const int  n   = (sc == 3) ? 5 : 7;
+    float oct = floorf(semi / 12.0f);
+    float within = semi - oct * 12.0f;                 // 0..12
+    float best = static_cast<float>(tbl[0]);
+    float bd = fabsf(within - best);
+    for (int i = 1; i < n; ++i) {
+      float d = fabsf(within - tbl[i]);
+      if (d < bd) { bd = d; best = static_cast<float>(tbl[i]); }
+    }
+    if (fabsf(within - 12.0f) < bd) best = 12.0f;      // wrap up to the octave
+    return oct * 12.0f + best;
   }
 
   Grain  grains_[params::granular::kMaxGrains];
@@ -193,6 +230,11 @@ class GranularMode : public IMode {
   float scatter_ = 0.5f;
   float mix_ = 0.5f;
   int   quantize_ = 0;
+  // web-pod engine controls (gran_params.h)
+  float rev_ = 0.30f;          // reverse-grain probability
+  float width_ = 0.0f;         // stereo width (per-grain pan spread)
+  float shape_gain_ = 1.0f;    // grain-window shape (1 soft Hann .. 8 hard gate)
+  int   scale_ = 0;            // pitch scale-lock (0 off / 1 maj / 2 min / 3 penta)
 };
 
 }  // namespace synthbox

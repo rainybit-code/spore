@@ -20,6 +20,7 @@
 #include "util/CpuLoadMeter.h"
 
 #include "config/params.h"
+#include "config/gran_params.h"
 #include "mod/modulation.h"
 #include "io/controls.h"
 #include "io/sensors.h"
@@ -74,6 +75,7 @@ int g_varSel = -1;  // TOGGLE 2 variant: -1 = follow toggle, >=0 = forced (web C
 synthbox::SynthParams synthbox::g_synthParams;
 // generative steering params (set over MIDI CC 32+ from the Propagator GENERATIVE pod)
 synthbox::GenParams synthbox::g_genParams;
+synthbox::GranParams synthbox::g_granParams;
 
 Led led1, led2;
 

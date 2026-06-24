@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **New Granular engine controls** (`config/gran_params.h`, CC 94-97) for the Propagator
+  GRANULAR pod, beyond the 6 physical knobs: **Reverse** (backwards-grain probability, was a
+  fixed 30%), **Width** (per-grain stereo pan spread — granular is now stereo), **Shape**
+  (grain window soft Hann -> hard flat-top gate), and **Scale-lock** (snap grain pitches to
+  off / major / minor / pentatonic). Defaults reproduce the previous sound.
 
 ## [v0.3.3] - 2026-06-24
 - **Cleaner master output**: a DC blocker (one-pole ~20 Hz high-pass per channel) strips any

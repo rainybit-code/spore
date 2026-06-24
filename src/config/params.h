@@ -183,6 +183,7 @@ constexpr int kCcFootsw1        = 91;  // CC 91 >=64 -> bypass on, <64 -> engage
 constexpr int kCcFootsw2        = 92;  // CC 92 >=64 -> mode action (freeze / re-seed)
 constexpr int kCcVar            = 93;  // CC 93 -> TOGGLE 2 variant (thirds: 0 / 1 / 2)
 constexpr int kCcGenBase        = 32;  // CC 32.. -> Generative pod params (see config/gen_params.h)
+constexpr int kCcGranBase       = 94;  // CC 94.. -> Granular pod params (see config/gran_params.h)
 }  // namespace midi
 
 }  // namespace params
