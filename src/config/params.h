@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+﻿// SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Joakim Langkilde
 // =============================================================================
 //  params.h  --  SINGLE SOURCE OF TRUTH for every tunable value in the synth.
@@ -28,7 +28,7 @@ namespace params {
 // Firmware version (semver, no leading "v"). Reported over SysEx identify so the
 // Propagator editor can flag when a newer release is available. Keep in sync with
 // the git tag at release time (scripts/release.sh bumps this automatically).
-constexpr char kFwVersion[] = "0.3.1";
+constexpr char kFwVersion[] = "0.3.2";
 
 // ----------------------------------------------------------------------------
 //  Audio engine

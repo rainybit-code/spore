@@ -1,10 +1,12 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to the Spore firmware are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.3.2] - 2026-06-24
 - **Granular pitch is now in tune.** The pitch knob quantizes to whole semitones (it used to
   sweep +/-24 semitones continuously, so it detuned against anything you played unless dialed
   exactly), with a small center detent that snaps to unison.
@@ -44,32 +46,32 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   (freeze / re-seed), CC 93 = TOGGLE 2 variant. Modes now read an overridable `ctx.variant`
   instead of reading Toggle 2 directly, so the whole control surface is drivable over MIDI.
 - **Fix Generative-mode CPU overload / MIDI lockup.** Generative ran its own `ReverbSc`
-  **and** the global FX reverb (double reverb) → the audio callback overran and starved MIDI.
+  **and** the global FX reverb (double reverb) â†’ the audio callback overran and starved MIDI.
   The global FX path is now skipped in Generative (it has its own reverb).
 - **Clear processing on mode change.** New `GlobalFx::Reset()` clears the FX delay/reverb
   tail, and each mode now implements `OnEnter()` to silence its voices/grains/reverb, so
   nothing from the previous mode lingers (or keeps costing CPU) into the next.
 - **CPU watchdog.** If the callback stays overloaded (~150 ms), `g_overload` latches: the
-  global FX is shed and the onboard LED fast-blinks (~5 Hz). Cleared by a mode/FX change —
+  global FX is shed and the onboard LED fast-blinks (~5 Hz). Cleared by a mode/FX change â€”
   i.e. change something to regain control.
 
 ## [v0.2.1] - 2026-06-18
 - **Steps mod-matrix source** (#8): the logistic-map (stepped) chaos `ChaosStep` is now a
-  routable Synth matrix source (was computed but unused). Source encoding widened `*7`→`*8`
-  (`synth_mode.h`); Propagator gains the jack with a v2→v3 patch migration.
+  routable Synth matrix source (was computed but unused). Source encoding widened `*7`â†’`*8`
+  (`synth_mode.h`); Propagator gains the jack with a v2â†’v3 patch migration.
 - **Live Chaos controls + telemetry**: Lorenz **speed** is now tunable over **CC 18**
   (`ModEngine::SetChaosSpeed`, range in `params::mod`). New SysEx **chaos-state** query
-  (`F0 7D 03 F7` → `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it
-  live — reports the already-computed value, so **no extra audio-CPU cost**.
+  (`F0 7D 03 F7` â†’ `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it
+  live â€” reports the already-computed value, so **no extra audio-CPU cost**.
 
 ## [v0.2.0] - 2026-06-18
 - **Chaos modulation sources**: a Lorenz attractor (smooth) + logistic map (stepped)
-  added to the shared `ModEngine` (`mod/modulation.h`) — deterministic-but-never-repeating
+  added to the shared `ModEngine` (`mod/modulation.h`) â€” deterministic-but-never-repeating
   movement. Wired into **Generative** (chaotic filter sway + wavetable-scan drift) and
   **Granular** (density drift). Params in `params::mod`. See `docs/MODULATION.md`.
 - **Chaos as a Synth mod-matrix source** (#7): route the Lorenz chaos to any destination
-  via the patchbay. Source encoding widened from `*6`→`*7` (`synth_mode.h`); Propagator
-  gains the matching jack (with a v1→v2 patch migration so old routings keep their meaning).
+  via the patchbay. Source encoding widened from `*6`â†’`*7` (`synth_mode.h`); Propagator
+  gains the matching jack (with a v1â†’v2 patch migration so old routings keep their meaning).
 
 ## [v0.1.2] - 2026-06-18
 - **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The
@@ -77,7 +79,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   *access*, so a decaying `ReverbSc` tail (no denormal guard of its own) stalled the
   FPU as it rang out. FZ also protects the delay/filter feedback paths.
 - **CPU-load metering**: instrument the audio callback with `CpuLoadMeter` and report
-  avg/peak load over SysEx (query `F0 7D 02 F7` → reply `F0 7D 42 <avg%> <max%> F7`).
+  avg/peak load over SysEx (query `F0 7D 02 F7` â†’ reply `F0 7D 42 <avg%> <max%> F7`).
   Propagator shows it live. See `docs/MIDI_PROTOCOL.md`.
 
 ## [v0.1.1] - 2026-06-17
