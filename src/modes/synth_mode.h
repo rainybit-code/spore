@@ -42,6 +42,7 @@ class SynthMode : public IMode {
   void Control(Hothouse& hw, ModContext& ctx) override {
     using namespace params::synth;
     const SynthParams& p = g_synthParams;
+    shed_ = ctx.overload;   // CPU watchdog: halve polyphony while overloaded
 
     static const int waves[4] = {daisysp::Oscillator::WAVE_SIN,
                                  daisysp::Oscillator::WAVE_POLYBLEP_TRI,
@@ -173,9 +174,10 @@ class SynthMode : public IMode {
 
   void ProcessBlock(AudioHandle::InputBuffer /*in*/,
                     AudioHandle::OutputBuffer out, size_t size) override {
+    const int nv = shed_ ? ((voices_ + 1) / 2) : voices_;  // overload: halve active polyphony
     for (size_t n = 0; n < size; ++n) {
       float l = 0.0f, r = 0.0f;
-      for (int i = 0; i < voices_; ++i) {
+      for (int i = 0; i < nv; ++i) {
         if (!v_[i].Active()) continue;
         float s = v_[i].Process() * drive_;
         l += s * panL_[i];
@@ -221,6 +223,7 @@ class SynthMode : public IMode {
   float rateMod1_ = 0.0f, rateMod2_ = 0.0f;   // LFO-rate modulation carried to next block
   int   voices_ = 4;
   int   steal_ = 0;
+  bool  shed_ = false;   // CPU watchdog active -> ProcessBlock halves polyphony
 };
 
 }  // namespace synthbox

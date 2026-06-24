@@ -68,6 +68,7 @@ class GenerativeMode : public IMode {
 
   void Control(Hothouse& hw, ModContext& ctx) override {
     quantize_ = ctx.variant;   // TOGGLE 2 (or MIDI override): chromatic / penta / major
+    shed_ = ctx.overload;      // CPU watchdog: drop voices so we recover (no reboot needed)
 
     float k_tempo = ctx.knob[Hothouse::KNOB_1];
     float k_range = ctx.knob[Hothouse::KNOB_2];
@@ -138,9 +139,10 @@ class GenerativeMode : public IMode {
 
   void ProcessBlock(AudioHandle::InputBuffer /*in*/,
                     AudioHandle::OutputBuffer out, size_t size) override {
+    const int nv = shed_ ? ((kVoices + 1) / 2) : kVoices;  // overload: shed voices to recover
     for (size_t n = 0; n < size; ++n) {
       float l = 0.0f, r = 0.0f;
-      for (int i = 0; i < kVoices; ++i) {
+      for (int i = 0; i < nv; ++i) {
         if (!voices_[i].Active()) continue;
         float s = voices_[i].Process();
         l += s * panL_[i];
@@ -177,8 +179,9 @@ class GenerativeMode : public IMode {
     pDetune_  = 0.003f + rng_.Unipolar() * 0.012f;
     pRes_     = daisysp::fclamp(0.10f + rng_.Unipolar() * 0.30f + tx * 0.20f, 0.0f, 0.85f);
     pDrive_   = (rng_.Unipolar() < 0.30f + tx * 0.50f) ? rng_.Unipolar() * (0.30f + tx * 0.55f) : 0.0f;
-    pFilter_  = (rng_.Unipolar() < 0.30f + tx * 0.45f) ? 1 : 0;              // Svf or fat Moog
-    pUni_     = (rng_.Unipolar() < 0.35f + tx * 0.55f) ? 2 : 1;              // keep CPU sane
+    pFilter_  = (rng_.Unipolar() < 0.15f + tx * 0.25f) ? 1 : 0;   // mostly cheap Svf; Moog rare (CPU)
+    pUni_     = 1;                                                 // no unison in generative (5 voices + the
+                                                                   // dedicated reverb already cost a lot)
     pSubOct_  = (rng_.Unipolar() < 0.5f) ? 0.5f : 0.25f;
     pSubWave_ = (rng_.Unipolar() < 0.5f) ? daisysp::Oscillator::WAVE_POLYBLEP_SQUARE
                                          : daisysp::Oscillator::WAVE_SIN;
@@ -252,6 +255,7 @@ class GenerativeMode : public IMode {
   float bpm_ = 50.0f, range_ = 12.0f, density_ = 0.4f, drift_ = 0.3f;
   float cutoff_ = 1200.0f, revMix_ = 0.6f, center_ = 48.0f;
   int   quantize_ = 0, steal_ = 0;
+  bool  shed_ = false;   // CPU watchdog active -> ProcessBlock drops voices
 
   // seeded patch (timbre) — rolled from the RNG, persists until the next re-seed
   int   pEngine_ = 0, pWave_ = daisysp::Oscillator::WAVE_POLYBLEP_SAW, pBank_ = 0;

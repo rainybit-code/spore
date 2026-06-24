@@ -139,7 +139,7 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   // Mode params from the (latched) MODE layer. VAR = forced (web CC 93) or TOGGLE 2.
   int variant = g_varSel >= 0 ? g_varSel : tog_var;
   IMode*     m = g_modes[g_active];
-  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE), g_clock.Bpm(), variant};
+  ModContext ctx{g_mod, g_sensors, g_shift.Values(ShiftKnobs::MODE), g_clock.Bpm(), variant, g_overload};
   m->Control(hw, ctx);
 
   if (g_bypass) {
@@ -153,9 +153,9 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
     // = double ReverbSc = overload), and the CPU watchdog sheds it under sustained load.
     if (g_active != MODE_GENERATIVE && !g_overload)
       g_fx.Process(out[0], out[1], size);
-    g_master.Process(out[0], out[1], size);  // master filter (LP/BP/HP) + volume
-    // Global safety limiter: hard-clamp to [-1, 1] so a resonant filter, stacked
-    // grains, or runaway delay feedback can never blast the output.
+    g_master.Process(out[0], out[1], size);  // master filter (LP/BP/HP) + volume + limiter
+    // Final backstop behind the master limiter: catch the sub-millisecond attack
+    // slip so the output can never leave [-1, 1], whatever the limiter is doing.
     for (size_t i = 0; i < size; ++i) {
       out[0][i] = out[0][i] > 1.0f ? 1.0f : (out[0][i] < -1.0f ? -1.0f : out[0][i]);
       out[1][i] = out[1][i] > 1.0f ? 1.0f : (out[1][i] < -1.0f ? -1.0f : out[1][i]);
@@ -166,9 +166,11 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out,
   // CPU watchdog: if the callback stays overloaded for ~150 ms, latch g_overload so we shed
   // the global FX (above) and fast-blink the LED. Cleared by a mode/FX change (regain control).
   {
-    static int over = 0;
-    if (g_cpu.GetAvgCpuLoad() > 0.95f) { if (++over > 150) g_overload = true; }
-    else over = 0;
+    static int over = 0, under = 0;
+    const float load = g_cpu.GetAvgCpuLoad();
+    if (load > 0.95f)      { under = 0; if (++over > 150) g_overload = true; }   // ~150 ms hot -> shed
+    else if (load < 0.78f) { over = 0; if (++under > 400) g_overload = false; }  // ~400 ms cool -> recover
+    else                   { over = 0; under = 0; }
   }
 }
 

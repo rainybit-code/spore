@@ -29,3 +29,11 @@ DAISYSP_DIR  = lib/DaisySP
 # program-dfu, program, etc.).
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
 include $(SYSTEM_FILES_DIR)/Makefile
+
+# Extra float optimization for the audio DSP hot paths. -ffast-math relaxes IEEE
+# strictness (reassociation, reciprocals, no math-errno, fast fp-contract), which
+# the per-sample synth/granular/reverb code benefits from. -fno-finite-math-only
+# keeps NaN/Inf handling intact -- the Lorenz chaos NaN-guard and the CPU meter
+# rely on isnan/isfinite. Appended to CFLAGS (CPPFLAGS = $(CFLAGS), so C++ inherits
+# it); deliberately NOT on ASFLAGS. Denormals are already flushed via FPSCR.FZ.
+CFLAGS += -ffast-math -fno-finite-math-only

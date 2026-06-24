@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Granular pitch is now in tune.** The pitch knob quantizes to whole semitones (it used to
+  sweep +/-24 semitones continuously, so it detuned against anything you played unless dialed
+  exactly), with a small center detent that snaps to unison.
+- **Smoother short grains.** The grain spawn interval is now randomized (+/-40%) so small grains
+  form a cloud instead of a periodic buzz at the spawn rate. (Overlap still depends on Density vs
+  Size: very short grains at low density are sparse by nature -- raise Density for a denser wash.)
+- **Master limiter instead of a hard clip.** The output stage now rides the gain down when a
+  peak would exceed the ceiling (fast ~0.5 ms attack, slow ~150 ms release) and lets it recover
+  smoothly, so a resonant filter / stacked grains / runaway feedback get turned *down* rather
+  than crushed. A hard clamp to [-1, 1] stays only as an inaudible backstop for the attack slip.
+- **Generative no longer locks up on re-seed.** The Brightness/Texture roll could land on a
+  timbre too heavy for the budget (Moog 4-pole + unison + FM + fold across all 5 voices), and
+  since Generative skips the global FX the CPU watchdog had nothing to shed -> it overran,
+  starved MIDI, and needed a reboot. Now: the roll caps its worst case (no unison, Moog rare),
+  and the watchdog **sheds voices** in the active mode and **auto-recovers** when load drops
+  (~400 ms cool-down) instead of latching until a mode change.
+- **Lower CPU across the board** via `-ffast-math -fno-finite-math-only` on the DSP build
+  (reassociation / reciprocals / fast fp-contract; NaN+Inf handling kept for the chaos guard
+  and CPU meter), plus a cheaper Granular hot loop -- Hann window from a LUT (was a per-grain
+  `cosf` every sample) and branch-wrap instead of `%` on the buffer indices.
 
 ## [v0.3.1] - 2026-06-19
 - **Generative steering** (`config/gen_params.h`, CC 32-37): the timbre still rolls

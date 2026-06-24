@@ -29,6 +29,11 @@ static constexpr size_t kGranBufLen =
     static_cast<size_t>(48000.0f * params::granular::kBufSeconds);
 static float DSY_SDRAM_BSS s_gran_buf[kGranBufLen];
 
+// Precomputed Hann window (power-of-two for cheap masked indexing) -- avoids a
+// per-grain-per-sample cosf() in the hot loop (up to kMaxGrains cosf/sample).
+static constexpr int kHannLen = 1024;
+static float s_hann[kHannLen];
+
 class GranularMode : public IMode {
  public:
   void Init(float sample_rate, Hothouse& /*hw*/) override {
@@ -38,8 +43,11 @@ class GranularMode : public IMode {
     valid_len_ = 0;
     frozen_ = false;
     spawn_phase_ = 0.0f;
+    next_spawn_ = 1.0f;
     for (int i = 0; i < params::granular::kMaxGrains; ++i) grains_[i].active = false;
     for (size_t i = 0; i < kGranBufLen; ++i) s_gran_buf[i] = 0.0f;
+    for (int i = 0; i < kHannLen; ++i)
+      s_hann[i] = 0.5f * (1.0f - cosf(2.0f * 3.14159265f * i / kHannLen));
   }
 
   void Action() override { frozen_ = !frozen_; }  // toggle freeze
@@ -66,7 +74,14 @@ class GranularMode : public IMode {
     // Density rides the chaos source a touch for organic, never-repeating motion.
     float dens = kDensityMinHz + k_dens * (kDensityMaxHz - kDensityMinHz);
     density_ = dens * (1.0f + 0.2f * ctx.mod.ChaosX());
-    pitch_semi_ = kPitchSemiMin + k_pitch * (kPitchSemiMax - kPitchSemiMin);
+    // Pitch quantized to whole semitones so it stays in tune with what you play
+    // (continuous mapping over +/-24 semis detuned against everything); a small
+    // center detent snaps cleanly to unison.
+    if (k_pitch > 0.48f && k_pitch < 0.52f) {
+      pitch_semi_ = 0.0f;
+    } else {
+      pitch_semi_ = roundf(kPitchSemiMin + k_pitch * (kPitchSemiMax - kPitchSemiMin));
+    }
     // Analog sensor (e.g. pressure/light) adds to pitch spread when wired.
     spread_semi_ = k_spread * kPitchSpreadMax + (ctx.sensors.Pressure() - 0.5f) * 4.0f;
     if (spread_semi_ < 0.0f) spread_semi_ = 0.0f;
@@ -82,14 +97,16 @@ class GranularMode : public IMode {
       // Record into the circular buffer unless frozen.
       if (!frozen_) {
         s_gran_buf[write_pos_] = dry;
-        write_pos_ = (write_pos_ + 1) % kGranBufLen;
+        if (++write_pos_ >= kGranBufLen) write_pos_ = 0;   // branch wrap (cheaper than %)
         if (valid_len_ < kGranBufLen) valid_len_++;
       }
 
-      // Spawn grains at the requested density.
+      // Spawn grains at the requested density, with a randomized interval so short
+      // grains form a smooth cloud instead of a periodic buzz at the spawn rate.
       spawn_phase_ += density_ / sr_;
-      while (spawn_phase_ >= 1.0f) {
-        spawn_phase_ -= 1.0f;
+      while (spawn_phase_ >= next_spawn_) {
+        spawn_phase_ -= next_spawn_;
+        next_spawn_ = 0.6f + 0.8f * rng_.Unipolar();   // 0.6..1.4 x the nominal period
         SpawnGrain();
       }
 
@@ -98,7 +115,7 @@ class GranularMode : public IMode {
       for (int g = 0; g < params::granular::kMaxGrains; ++g) {
         Grain& gr = grains_[g];
         if (!gr.active) continue;
-        float w = 0.5f * (1.0f - cosf(2.0f * 3.14159265f * gr.phase));  // Hann
+        float w = s_hann[static_cast<int>(gr.phase * kHannLen) & (kHannLen - 1)];  // Hann (LUT)
         wet += ReadInterp(gr.pos) * w;
         gr.pos += gr.inc;
         if (gr.pos >= static_cast<float>(kGranBufLen)) gr.pos -= kGranBufLen;
@@ -148,7 +165,7 @@ class GranularMode : public IMode {
   float ReadInterp(float pos) const {
     int   i0 = static_cast<int>(pos);
     float frac = pos - i0;
-    int   i1 = (i0 + 1) % kGranBufLen;
+    int   i1 = i0 + 1; if (i1 >= static_cast<int>(kGranBufLen)) i1 = 0;   // branch wrap
     return s_gran_buf[i0] + frac * (s_gran_buf[i1] - s_gran_buf[i0]);
   }
 
@@ -158,6 +175,7 @@ class GranularMode : public IMode {
   size_t write_pos_ = 0;
   size_t valid_len_ = 0;
   float  spawn_phase_ = 0.0f;
+  float  next_spawn_ = 1.0f;   // jittered spawn threshold (set per grain)
   bool   frozen_ = false;
 
   // staged from Control()

@@ -30,6 +30,7 @@ struct ModContext {
   int            variant;  // TOGGLE 2 position (0/1/2), MIDI-overridable -- per-mode
                            // variant (waveform / pitch-quantize / scale). Read this
                            // instead of TogglePos(TOGGLESWITCH_2) so MIDI can drive it.
+  bool           overload; // CPU watchdog tripped -> modes should shed load (cap voices)
 };
 
 class IMode {
