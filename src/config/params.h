@@ -28,7 +28,7 @@ namespace params {
 // Firmware version (semver, no leading "v"). Reported over SysEx identify so the
 // Propagator editor can flag when a newer release is available. Keep in sync with
 // the git tag at release time (scripts/release.sh bumps this automatically).
-constexpr char kFwVersion[] = "0.3.3";
+constexpr char kFwVersion[] = "0.3.4";
 
 // ----------------------------------------------------------------------------
 //  Audio engine

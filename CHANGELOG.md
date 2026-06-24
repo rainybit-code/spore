@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.3.4] - 2026-06-24
 - **New Granular engine controls** (`config/gran_params.h`, CC 94-97) for the Propagator
   GRANULAR pod, beyond the 6 physical knobs: **Reverse** (backwards-grain probability, was a
   fixed 30%), **Width** (per-grain stereo pan spread — granular is now stereo), **Shape**
