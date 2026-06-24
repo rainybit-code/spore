@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.3.3] - 2026-06-24
 - **Cleaner master output**: a DC blocker (one-pole ~20 Hz high-pass per channel) strips any
   offset built up by resonant filters / wavefolding / drive before it eats headroom, and the
   master volume / cutoff / resonance are now smoothed (~15 ms) so stepped MIDI CC and fast knob
