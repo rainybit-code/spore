@@ -37,3 +37,15 @@ include $(SYSTEM_FILES_DIR)/Makefile
 # rely on isnan/isfinite. Appended to CFLAGS (CPPFLAGS = $(CFLAGS), so C++ inherits
 # it); deliberately NOT on ASFLAGS. Denormals are already flushed via FPSCR.FZ.
 CFLAGS += -ffast-math -fno-finite-math-only
+
+# Link-time optimization. The app is effectively one big translation unit
+# (main.cpp pulls in all the header-only DSP), so the win is modest, but it trims
+# ~1.5 KB of the scarce 128 KB internal flash and lets cross-object inlining reach
+# hothouse.cpp. Needs the flag at compile and link.
+CFLAGS  += -flto
+LDFLAGS += -flto
+
+# Keep the USB descriptor override out of LTO: usb_identity.c wins over libDaisy's
+# archive copy purely by link order, so compile it as a plain object to keep that
+# symbol resolution deterministic (-fno-lto wins as the last flag).
+$(BUILD_DIR)/usb_identity.o: CFLAGS += -fno-lto

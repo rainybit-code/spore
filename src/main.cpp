@@ -164,13 +164,9 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
         // Global FX runs for Synth/Granular only: Generative has its own reverb (running both
         // = double ReverbSc = overload), and the CPU watchdog sheds it under sustained load.
         if (g_active != MODE_GENERATIVE && !g_overload) g_fx.Process(out[0], out[1], size);
-        g_master.Process(out[0], out[1], size);  // master filter (LP/BP/HP) + volume + limiter
-        // Final backstop behind the master limiter: catch the sub-millisecond attack
-        // slip so the output can never leave [-1, 1], whatever the limiter is doing.
-        for (size_t i = 0; i < size; ++i) {
-            out[0][i] = out[0][i] > 1.0f ? 1.0f : (out[0][i] < -1.0f ? -1.0f : out[0][i]);
-            out[1][i] = out[1][i] > 1.0f ? 1.0f : (out[1][i] < -1.0f ? -1.0f : out[1][i]);
-        }
+        // Master filter (LP/BP/HP) + volume + peak limiter, with a final hard clamp to
+        // [-1, 1] folded into the limiter so the output can never leave range.
+        g_master.Process(out[0], out[1], size);
     }
     g_cpu.OnBlockEnd();
 
