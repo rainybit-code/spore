@@ -13,17 +13,26 @@
 namespace synthbox {
 
 enum GenParam {
-  GP_CHORD = 0,   // note stacking: single notes -> triads
-  GP_SWELL,       // note length: short stabs -> long evolving pads (atk/rel scale)
-  GP_MOTION,      // random-walk step size (gentle drift -> wide leaps)
-  GP_BRIGHT,      // timbre brightness bias (weights the rolled scan + live cutoff)
-  GP_TEXTURE,     // timbre complexity bias (weights rolled FM / fold / drive / unison / filter)
-  GP_WANDER,      // how much a rolled timbre keeps morphing over time (scan/cutoff drift)
-  GP_COUNT,
+    GP_CHORD = 0,  // note stacking: single notes -> triads
+    GP_SWELL,      // note length: short stabs -> long evolving pads (atk/rel scale)
+    GP_MOTION,     // random-walk step size (gentle drift -> wide leaps)
+    GP_BRIGHT,     // timbre brightness bias (weights the rolled scan + live cutoff)
+    GP_TEXTURE,    // timbre complexity bias (weights rolled FM / fold / drive / unison / filter)
+    GP_WANDER,     // how much a rolled timbre keeps morphing over time (scan/cutoff drift)
+    GP_COUNT,
 };
 
+// Defaults assigned by enum name so reordering GenParam can't shift them.
 struct GenParams {
-  float v[GP_COUNT] = {0.40f, 0.50f, 0.45f, 0.50f, 0.50f, 0.35f};
+    float v[GP_COUNT] = {};
+    GenParams() {
+        v[GP_CHORD] = 0.40f;
+        v[GP_SWELL] = 0.50f;
+        v[GP_MOTION] = 0.45f;
+        v[GP_BRIGHT] = 0.50f;
+        v[GP_TEXTURE] = 0.50f;
+        v[GP_WANDER] = 0.35f;
+    }
 };
 
 extern GenParams g_genParams;  // defined in main.cpp

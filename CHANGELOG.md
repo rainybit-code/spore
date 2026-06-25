@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Contributor tooling.** Added `CONTRIBUTING.md`, GitHub issue/PR templates, a
+  `.clang-format` (Google C++, 4-space, 100-col) + `.editorconfig`, and a CI job that
+  enforces formatting. New `scripts/setup.{sh,ps1}` one-shot bootstrap (submodules + libs).
+- **Internal cleanup** (no behaviour change): `PumpMidi` takes a `MidiContext` struct
+  instead of 11 positional args; per-mode parameter defaults are assigned by enum name so
+  reordering can't silently shift them; CPU-watchdog and LED thresholds moved into
+  `params::watchdog` / `params::ui`.
 
 ## [v0.3.4] - 2026-06-24
 - **New Granular engine controls** (`config/gran_params.h`, CC 94-97) for the Propagator

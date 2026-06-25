@@ -12,15 +12,18 @@
 namespace synthbox {
 
 enum GranParam {
-  GR_REVERSE = 0,  // probability a grain plays backwards (0..1)
-  GR_WIDTH,        // stereo width: per-grain random pan spread (0 mono .. 1 wide)
-  GR_SHAPE,        // grain window: 0 soft (Hann) -> 1 hard (flat-top gate)
-  GR_SCALE,        // pitch scale-lock: off / major / minor / pentatonic
-  GR_COUNT,
+    GR_REVERSE = 0,  // probability a grain plays backwards (0..1)
+    GR_WIDTH,        // stereo width: per-grain random pan spread (0 mono .. 1 wide)
+    GR_SHAPE,        // grain window: 0 soft (Hann) -> 1 hard (flat-top gate)
+    GR_SCALE,        // pitch scale-lock: off / major / minor / pentatonic
+    GR_COUNT,
 };
 
+// Defaults assigned by enum name so reordering GranParam can't shift them.
+// Anything not set here stays 0 (mono width, soft window, chromatic).
 struct GranParams {
-  float v[GR_COUNT] = {0.30f, 0.0f, 0.0f, 0.0f};  // 30% reverse, mono, soft, chromatic
+    float v[GR_COUNT] = {};
+    GranParams() { v[GR_REVERSE] = 0.30f; }  // 30% of grains play backwards
 };
 
 extern GranParams g_granParams;  // defined in main.cpp

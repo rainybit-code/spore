@@ -1,0 +1,16 @@
+# Code style for Spore. Run `clang-format -i src/**/*.{h,cpp,c}` before committing
+# (CI enforces it). Based on Google C++ with a 4-space indent and a 100-col width
+# to match the existing source.
+---
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 4
+ContinuationIndentWidth: 4
+AccessModifierOffset: -2
+ColumnLimit: 100
+PointerAlignment: Left
+DerivePointerAlignment: false
+AlignTrailingComments: true
+# Includes are grouped by layer (daisy -> config -> io -> mod -> fx -> modes) on
+# purpose; don't let the formatter reorder them.
+SortIncludes: false

@@ -179,12 +179,10 @@ git clone --recurse-submodules https://github.com/rainybit-code/spore.git
    `toolchain/` folder (gitignored) and `scripts/env.*` will put it on PATH
    automatically. `dfu-util` is only needed to flash, not to build. VS Code 
    tasks + IntelliSense are wired in `.vscode/`.
-2. **Libraries** - wired as git submodules under `lib/`; build them once:
+2. **Libraries** - wired as git submodules under `lib/`. One command fetches them and
+   builds libDaisy + DaisySP (re-run after a submodule update):
    ```sh
-   # if you didn't clone with --recurse-submodules
-   git submodule update --init --recursive
-   # or scripts\build-libs.ps1 on Windows
-   scripts/build-libs.sh
+   scripts/setup.sh        # Windows: scripts\setup.ps1
    ```
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
 4. **Flash** (via USB DFU): put the Daisy in DFU mode (hold **BOOT**, tap
@@ -203,7 +201,7 @@ src/
   io/                 controls, knobs (shift-layer soft-takeover), midi_in,
                       clock (MIDI clock), sensors (analog ADC)
 lib/                  libDaisy + DaisySP (git submodules)
-scripts/              build / flash / build-libs / clean / release (.sh + .ps1)
+scripts/              setup / build / flash / build-libs / clean / release (.sh + .ps1)
 pd/                   Pure Data sketches for prototyping DSP ideas
 ```
 
@@ -222,6 +220,13 @@ class implementing `IMode` (`src/modes/mode.h`) into the array in `main.cpp`.
 
 See [`docs/IDEAS.md`](docs/IDEAS.md) for the tiered backlog (more inputs, a wireless
 modulator, future modes, presets…).
+
+## Contributing
+
+Contributions are welcome - see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the project
+layout, coding conventions, the `IMode` extension pattern, and the build/format/PR flow.
+Formatting is enforced by [`.clang-format`](.clang-format) (run `clang-format -i` before
+committing); CI builds the firmware and checks formatting on every PR.
 
 ## Releases & versioning
 
