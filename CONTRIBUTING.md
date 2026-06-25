@@ -85,8 +85,11 @@ wrappers over the `Makefile` — keep the actual logic in the Makefile where pos
 ## Submitting a change
 
 1. Branch off `main`.
-2. Make your change; run `clang-format -i` and confirm `scripts/build.sh` succeeds.
+2. Make your change. Running `clang-format -i` and `scripts/build.sh` locally is the fast
+   way to catch problems, but CI enforces both either way.
 3. Add a line under `## [Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md).
-4. Open a PR against `main`. CI builds the firmware and checks formatting on every PR.
+4. Open a PR against `main`. On every PR, CI builds the firmware, checks formatting, and
+   requires a `CHANGELOG.md` entry (label the PR `skip-changelog` for changes that don't
+   warrant one, e.g. CI-only tweaks).
 
 Releases are cut from version tags — see the *Releases & versioning* section of the README.
