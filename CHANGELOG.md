@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **CI checks a CHANGELOG entry** on every PR (skippable via a `skip-changelog` /
+  `dependencies` label), and the PR template now lists only the manual items CI can't
+  verify (formatting, build, and changelog are enforced automatically).
 - **Contributor tooling.** Added `CONTRIBUTING.md`, GitHub issue/PR templates, a
   `.clang-format` (Google C++, 4-space, 100-col) + `.editorconfig`, and a CI job that
   enforces formatting. New `scripts/setup.{sh,ps1}` one-shot bootstrap (submodules + libs).

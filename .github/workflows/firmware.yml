@@ -14,6 +14,27 @@ permissions:
   contents: write        # needed to create Releases on tag builds
 
 jobs:
+  changelog:
+    # Require a CHANGELOG.md entry on PRs. Skipped for PRs labelled
+    # 'skip-changelog' or 'dependencies' (e.g. the submodule-update bot).
+    if: >-
+      github.event_name == 'pull_request' &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-changelog') &&
+      !contains(github.event.pull_request.labels.*.name, 'dependencies')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a CHANGELOG entry
+        run: |
+          base='${{ github.event.pull_request.base.sha }}'
+          if git diff --quiet "$base" HEAD -- CHANGELOG.md; then
+            echo "::error::This PR doesn't update CHANGELOG.md. Add a note under '## [Unreleased]', or label the PR 'skip-changelog'."
+            exit 1
+          fi
+          echo "CHANGELOG.md updated."
+
   format:
     runs-on: ubuntu-latest
     steps:
