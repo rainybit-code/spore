@@ -1,0 +1,83 @@
+name: update-submodules
+
+# Weekly check for new libDaisy / DaisySP commits. If upstream has moved, bump the
+# vendored submodules, confirm the firmware still builds, and open a PR. Also runnable
+# on demand from the Actions tab (workflow_dispatch).
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # Mondays 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Bump submodules to upstream HEAD
+        id: bump
+        run: |
+          set -e
+          summary=""
+          for sm in lib/libDaisy lib/DaisySP; do
+            old=$(git -C "$sm" rev-parse --short HEAD)
+            git -C "$sm" fetch --quiet origin
+            def=$(git -C "$sm" remote show origin | sed -n 's/.*HEAD branch: //p')
+            git -C "$sm" checkout --quiet "origin/$def"
+            new=$(git -C "$sm" rev-parse --short HEAD)
+            [ "$old" != "$new" ] && summary="${summary}- \`${sm}\`: ${old} -> ${new}"$'\n'
+          done
+          # Stage the new gitlinks, then sync nested submodules (each lib has its own) to match.
+          git add lib/libDaisy lib/DaisySP
+          git submodule update --init --recursive
+          if git diff --cached --quiet -- lib; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Submodules already up to date."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            { echo "summary<<EOF"; printf '%s' "$summary"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install ARM GCC toolchain
+        if: steps.bump.outputs.changed == 'true'
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '12.3.Rel1'
+
+      - name: Build with the updated libraries
+        if: steps.bump.outputs.changed == 'true'
+        id: build
+        continue-on-error: true   # a build break shouldn't suppress the PR -- flag it instead
+        run: |
+          make -C lib/libDaisy -j"$(nproc)"
+          make -C lib/DaisySP  -j"$(nproc)"
+          make -j"$(nproc)"
+
+      - name: Open pull request
+        if: steps.bump.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: chore/update-submodules
+          delete-branch: true
+          add-paths: lib
+          commit-message: 'chore: update vendored submodules to upstream HEAD'
+          title: 'chore: update vendored submodules (libDaisy / DaisySP)'
+          labels: dependencies
+          body: |
+            Automated weekly bump of the vendored libraries to their upstream default branch.
+
+            ${{ steps.bump.outputs.summary }}
+            Firmware build with the updated libraries: **${{ steps.build.outcome }}**
+            (`success` = compiles clean; `failure` = needs a compatibility fix before merging).
+
+            Review the upstream changelogs, then merge if the build is green. The repo's
+            `firmware.yml` CI does **not** run automatically on this bot PR (a GitHub limitation
+            on `GITHUB_TOKEN`-created PRs), which is why the build above runs inline.
