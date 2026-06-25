@@ -12,6 +12,9 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   and the final hard clamp is folded into the master limiter (one less buffer pass).
 - **Link-time optimization** (`-flto`) trims ~1.5 KB of internal flash (98.2% → 97.1%);
   `usb_identity.c` is kept out of LTO so its USB-descriptor override stays deterministic.
+- **CI checks a CHANGELOG entry** on every PR (skippable via a `skip-changelog` /
+  `dependencies` label), and the PR template now lists only the manual items CI can't
+  verify (formatting, build, and changelog are enforced automatically).
 - **Contributor tooling.** Added `CONTRIBUTING.md`, GitHub issue/PR templates, a
   `.clang-format` (Google C++, 4-space, 100-col) + `.editorconfig`, and a CI job that
   enforces formatting. New `scripts/setup.{sh,ps1}` one-shot bootstrap (submodules + libs).
