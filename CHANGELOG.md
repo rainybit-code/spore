@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Presets** (`io/presets.h`): three per mode, stored in QSPI. Hold Footswitch 2 to enter
+  preset mode, flip Toggle 2 to recall slot 1/2/3 (the slot is the variant position), or tap
+  Footswitch 1 (while holding FS2) to save the current sound. Recalled knob values use the
+  existing soft-takeover, so physical pots don't jump. LEDs show the active preset
+  (right = 1, left = 2, both = 3).
+- **Run from SRAM via the Daisy bootloader** (`APP_TYPE=BOOT_SRAM`). The firmware outgrew the
+  128 KB internal flash, so it now loads from QSPI into SRAM at boot — hundreds of KB of
+  headroom. **Flashing changed**: install the bootloader once with
+  `scripts/install-bootloader.{sh,ps1}`, then flash the app with `scripts/flash.{sh,ps1}`.
+  The wavetables moved to SDRAM to fit the SRAM build's smaller default `.bss`.
 - **Removed the "hold both footswitches → DFU" gesture.** Enter DFU for flashing over MIDI
   (CC 119 ≥ 64, e.g. from Propagator) or with the Daisy Seed's BOOT+RESET buttons. Frees the
   footswitch combinations for upcoming features (e.g. presets).

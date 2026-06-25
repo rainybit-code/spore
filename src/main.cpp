@@ -18,6 +18,7 @@
 #include "daisy_seed.h"
 #include "hothouse.h"
 #include "util/CpuLoadMeter.h"
+#include "util/PersistentStorage.h"
 
 #include "config/params.h"
 #include "config/gran_params.h"
@@ -25,6 +26,7 @@
 #include "io/controls.h"
 #include "io/sensors.h"
 #include "io/knobs.h"
+#include "io/presets.h"
 #include "io/midi_in.h"
 #include "fx/effects.h"
 #include "fx/master.h"
@@ -77,7 +79,84 @@ synthbox::SynthParams synthbox::g_synthParams;
 synthbox::GenParams synthbox::g_genParams;
 synthbox::GranParams synthbox::g_granParams;
 
+// Presets in QSPI (io/presets.h): 3 slots per mode, indexed by the Toggle-2 position.
+daisy::PersistentStorage<PresetBank> g_presetStore(hw.seed.qspi);
+volatile bool g_preset_mode = false;          // FS2 held -> Toggle 2 selects a preset slot
+volatile bool g_preset_save_pending = false;  // ISR asks the main loop to flush the bank to QSPI
+volatile uint32_t g_preset_save_flash = 0;    // System::GetNow() at last save (LED confirm)
+volatile int g_active_preset[MODE_COUNT] = {-1, -1, -1};  // last loaded/saved slot (-1 = none)
+bool g_fs2_hold_latch = false;  // distinguishes FS2 tap (action) vs hold (preset)
+
 Led led1, led2;
+
+// ---- Presets: capture / apply the live sound for a mode (io/presets.h) ----
+// The slot index IS the Toggle-2 variant, so variant itself is not stored.
+static const float* ModeParams(int mode, int& count) {
+    switch (mode) {
+        case MODE_GRANULAR:
+            count = GR_COUNT;
+            return g_granParams.v;
+        case MODE_GENERATIVE:
+            count = GP_COUNT;
+            return g_genParams.v;
+        default:
+            count = SP_COUNT;
+            return g_synthParams.v;
+    }
+}
+
+static void PresetCapture(PresetData& p, int mode) {
+    const float* mk = g_shift.Values(ShiftKnobs::MODE);
+    const float* fk = g_shift.Values(ShiftKnobs::FX);
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) {
+        p.modeKnobs[i] = mk[i];
+        p.fxKnobs[i] = fk[i];
+    }
+    int n;
+    const float* src = ModeParams(mode, n);
+    for (int i = 0; i < n; ++i) p.modeParams[i] = src[i];
+    p.fxMode = static_cast<uint8_t>(g_fx.GetMode());
+    p.delaySync = static_cast<uint8_t>(g_delaySync);
+    p.masterVol = g_master.GetVolume();
+    p.masterCut = g_master.GetCutoff();
+    p.masterRes = g_master.GetRes();
+    p.masterFiltType = static_cast<uint8_t>(g_master.GetFilterType());
+    p.used = 1;
+}
+
+static void PresetApply(const PresetData& p, int mode) {
+    int n;
+    float* dst = const_cast<float*>(ModeParams(mode, n));
+    for (int i = 0; i < n; ++i) dst[i] = p.modeParams[i];
+    // SetValue locks each knob (soft-takeover): the physical pots don't fight the
+    // recalled values until they're moved through them.
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) {
+        g_shift.SetValue(ShiftKnobs::MODE, i, p.modeKnobs[i]);
+        g_shift.SetValue(ShiftKnobs::FX, i, p.fxKnobs[i]);
+    }
+    g_fxSel = p.fxMode;  // forced; physical Toggle 3 takes over when moved
+    g_delaySync = p.delaySync;
+    g_master.SetVolume(p.masterVol);
+    g_master.SetCutoff(p.masterCut);
+    g_master.SetRes(p.masterRes);
+    g_master.SetFilterType(p.masterFiltType);
+}
+
+// Recall slot (no-op on an empty slot). Capture is fast (RAM); the QSPI write is
+// deferred to the main loop via g_preset_save_pending so the audio ISR stays quick.
+static void PresetLoad(int mode, int slot) {
+    const PresetData& p = g_presetStore.GetSettings().slot[mode][slot];
+    if (!p.used) return;
+    PresetApply(p, mode);
+    g_active_preset[mode] = slot;
+}
+
+static void PresetSave(int mode, int slot) {
+    PresetCapture(g_presetStore.GetSettings().slot[mode][slot], mode);
+    g_active_preset[mode] = slot;
+    g_preset_save_flash = System::GetNow();
+    g_preset_save_pending = true;
+}
 
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size) {
     g_cpu.OnBlockStart();
@@ -93,6 +172,13 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     int tog_mode = CurrentMode(hw);
     int tog_fx = TogglePos(hw, Hothouse::TOGGLESWITCH_3);
     int tog_var = TogglePos(hw, Hothouse::TOGGLESWITCH_2);
+
+    // Preset mode: hold FOOTSWITCH 2. Toggle 2 then selects the slot (== variant),
+    // FOOTSWITCH 1 taps to save (below); the LEDs show the active preset (main loop).
+    bool preset_mode = hw.switches[Hothouse::FOOTSWITCH_2].Pressed() &&
+                       hw.switches[Hothouse::FOOTSWITCH_2].TimeHeldMs() > params::preset::kHoldMs;
+    g_preset_mode = preset_mode;
+
     if (tog_mode != last_tog_mode) {
         last_tog_mode = tog_mode;
         g_modeSel = -1;
@@ -103,7 +189,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     }
     if (tog_var != last_tog_var) {
         last_tog_var = tog_var;
-        g_varSel = -1;
+        g_varSel = -1;  // variant follows Toggle 2 (slot == variant)
+        if (preset_mode) PresetLoad(g_active, tog_var);  // recall the slot at the new position
     }
 
     // Mode: forced select (web CC 16 / moved toggle) wins, else follow TOGGLE 1.
@@ -126,17 +213,27 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     g_fx.SetTempo(g_clock.Bpm());  // tempo-synced delay follows the local clock
     g_fx.SetSync(g_delaySync);
 
-    // FOOTSWITCH 1: hold = edit FX (knobs -> FX layer); quick tap = bypass toggle.
-    bool fx_editing = hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
-                      hw.switches[Hothouse::FOOTSWITCH_1].TimeHeldMs() > params::fx::kEditHoldMs;
-    if (fx_editing) g_fx_edit_latch = true;
-    if (hw.switches[Hothouse::FOOTSWITCH_1].FallingEdge()) {
-        if (!g_fx_edit_latch) g_bypass = !g_bypass;  // it was a tap
-        g_fx_edit_latch = false;
+    // FOOTSWITCH 1: in preset mode a tap SAVES the current sound to the Toggle-2
+    // slot; otherwise hold = edit FX (knobs -> FX layer), quick tap = bypass.
+    bool fx_editing = false;
+    if (preset_mode) {
+        if (hw.switches[Hothouse::FOOTSWITCH_1].RisingEdge()) PresetSave(g_active, tog_var);
+    } else {
+        fx_editing = hw.switches[Hothouse::FOOTSWITCH_1].Pressed() &&
+                     hw.switches[Hothouse::FOOTSWITCH_1].TimeHeldMs() > params::fx::kEditHoldMs;
+        if (fx_editing) g_fx_edit_latch = true;
+        if (hw.switches[Hothouse::FOOTSWITCH_1].FallingEdge()) {
+            if (!g_fx_edit_latch) g_bypass = !g_bypass;  // it was a tap
+            g_fx_edit_latch = false;
+        }
     }
 
-    // FOOTSWITCH 2: mode-specific action.
-    if (Footswitch2Pressed(hw)) g_modes[g_active]->Action();
+    // FOOTSWITCH 2: tap = mode action (freeze / re-seed); hold = preset mode (above).
+    if (preset_mode) g_fs2_hold_latch = true;
+    if (hw.switches[Hothouse::FOOTSWITCH_2].FallingEdge()) {
+        if (!g_fs2_hold_latch) g_modes[g_active]->Action();  // it was a tap
+        g_fs2_hold_latch = false;
+    }
 
     // Shift-layer: route knobs to FX while editing, to the mode otherwise.
     g_shift.SetLayer(fx_editing ? ShiftKnobs::FX : ShiftKnobs::MODE);
@@ -283,6 +380,14 @@ int main() {
     const float fx_defaults[ShiftKnobs::kKnobs] = {0.30f, 0.40f, 0.35f, 0.70f, 0.60f, 0.70f};
     g_shift.Init(fx_defaults);
 
+    // Presets: load the bank from QSPI (writes factory defaults on first run; resets to
+    // empty on a version bump -- old presets can't be trusted across a layout change).
+    {
+        PresetBank defaults;  // version = kPresetVersion, all slots empty
+        g_presetStore.Init(defaults, kPresetQspiOffset);
+        if (g_presetStore.GetSettings().version != kPresetVersion) g_presetStore.RestoreDefaults();
+    }
+
     // Non-standard input: analog sensor on a free ADC pin.
     // (Motion IMU is tier-2 / deferred -- see io/imu.h.)
     g_sensors.Init(hw);  // re-inits ADC to add analog input on A0/D15
@@ -310,10 +415,37 @@ int main() {
                                       : (heartbeat || midi_active));
         }
 
-        // LED feedback: LED1 = engaged (lit) / bypassed (off), mid while editing FX;
-        //               LED2 brightness indicates the active FX (off/delay/reverb).
-        led1.Set(g_fx_edit_latch ? 0.5f : (g_bypass ? 0.0f : 1.0f));
-        led2.Set(0.15f * static_cast<float>(g_fx.GetMode()) * 2.0f);
+        // Flush a pending preset save to QSPI here (slow flash erase/write) rather than in
+        // the audio ISR. Audio keeps running from internal flash + SRAM during the write.
+        if (g_preset_save_pending) {
+            g_presetStore.Save();
+            g_preset_save_pending = false;
+        }
+
+        // LED feedback. While holding FS2 (preset mode) the LEDs show the active preset:
+        // right = 1, left = 2, both = 3 (off = none); a save flashes both fast. Otherwise
+        // LED1 = engaged (lit) / bypassed (off), mid while editing FX; LED2 = active FX.
+        if (g_preset_mode) {
+            uint32_t now = System::GetNow();
+            bool saving = (now - g_preset_save_flash) < params::preset::kSaveFlashMs;
+            uint32_t period = saving ? params::preset::kSaveFlashBlinkMs : params::preset::kBlinkMs;
+            bool on = ((now / period) % 2) == 0;
+            int slot = g_active_preset[g_active];
+            bool left = false, right = false;  // led1 = LEFT, led2 = RIGHT (confirm on hardware)
+            if (saving)
+                left = right = on;
+            else if (slot == 0)
+                right = on;
+            else if (slot == 1)
+                left = on;
+            else if (slot == 2)
+                left = right = on;
+            led1.Set(left ? 1.0f : 0.0f);
+            led2.Set(right ? 1.0f : 0.0f);
+        } else {
+            led1.Set(g_fx_edit_latch ? 0.5f : (g_bypass ? 0.0f : 1.0f));
+            led2.Set(0.15f * static_cast<float>(g_fx.GetMode()) * 2.0f);
+        }
         led1.Update();
         led2.Update();
 

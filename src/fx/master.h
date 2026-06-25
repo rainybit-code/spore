@@ -57,6 +57,12 @@ class MasterChain {
     void SetCutoff(float v01) { cut01_ = v01; }
     void SetRes(float v01) { res01_ = v01; }
 
+    // Target values (pre-smoothing), for capturing into a preset.
+    float GetVolume() const { return vol_; }
+    int GetFilterType() const { return type_; }
+    float GetCutoff() const { return cut01_; }
+    float GetRes() const { return res01_; }
+
     // In-place stereo process.
     void Process(float* l, float* r, size_t size) {
         // Block-rate smoothing of the control params (de-zipper).

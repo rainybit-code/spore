@@ -185,6 +185,20 @@ constexpr float kEchoDeadband = 0.008f;  // min knob move to mirror back over MI
 }  // namespace ui
 
 // ----------------------------------------------------------------------------
+//  Presets               (io/presets.h: 3 slots per mode, stored in QSPI)
+//    Hold FOOTSWITCH 2 to enter preset mode; the Toggle-2 position selects the
+//    slot. Flip Toggle 2 to recall a slot; tap FOOTSWITCH 1 (while holding FS2)
+//    to save the current sound to the slot at the Toggle-2 position. While held,
+//    the LEDs show the active preset: right = 1, left = 2, both = 3.
+// ----------------------------------------------------------------------------
+namespace preset {
+constexpr float kHoldMs = 350.0f;           // FS2 hold time to enter preset mode
+constexpr uint32_t kBlinkMs = 200;          // preset-indicator LED blink (half period)
+constexpr uint32_t kSaveFlashMs = 500;      // duration of the post-save confirm flash
+constexpr uint32_t kSaveFlashBlinkMs = 60;  // fast blink during the save confirm
+}  // namespace preset
+
+// ----------------------------------------------------------------------------
 //  MIDI management interface   (USB MIDI <-> browser WebMIDI tool)
 //    CC drives the live knob values as "virtual knobs"; see docs/MIDI_PROTOCOL.md
 //    for the full contract (CC map + SysEx).
