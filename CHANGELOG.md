@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.4.0] - 2026-06-25
 - **Presets** (`io/presets.h`): three per mode, stored in QSPI. Hold Footswitch 2 to enter
   preset mode, flip Toggle 2 to recall slot 1/2/3 (the slot is the variant position), or tap
   Footswitch 1 (while holding FS2) to save the current sound. Recalled knob values use the
