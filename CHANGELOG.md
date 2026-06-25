@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Lower audio-CPU on the voice path** (no audible change): the per-voice filter only
+  recomputes its coefficients when cutoff / resonance / filter-type actually change, so
+  static-filter patches skip a `sinf`+`powf` (Svf) or coefficient polynomial (Moog) every
+  sample; unison detune offsets are precomputed per block instead of dividing per sample;
+  and the final hard clamp is folded into the master limiter (one less buffer pass).
+- **Link-time optimization** (`-flto`) trims ~1.5 KB of internal flash (98.2% → 97.1%);
+  `usb_identity.c` is kept out of LTO so its USB-descriptor override stays deterministic.
 - **CI checks a CHANGELOG entry** on every PR (skippable via a `skip-changelog` /
   `dependencies` label), and the PR template now lists only the manual items CI can't
   verify (formatting, build, and changelog are enforced automatically).

@@ -182,13 +182,22 @@ class Voice {
                 u = 1;
             else if (u > kUni)
                 u = kUni;
+            // Unison detune offsets + 1/u gain depend only on (u, detune) -- both
+            // per-block -- so recompute them once when they change, not per sample.
+            if (u != lastU_ || detune != lastDetune_) {
+                lastU_ = u;
+                lastDetune_ = detune;
+                for (int i = 0; i < u; ++i)
+                    uniMul_[i] =
+                        1.0f + ((u > 1) ? ((float)i / (u - 1) - 0.5f) * 2.0f * detune : 0.0f);
+                uniGain_ = 1.0f / (float)u;
+            }
             sig = 0.0f;
             for (int i = 0; i < u; ++i) {
-                float off = (u > 1) ? ((float)i / (u - 1) - 0.5f) * 2.0f * detune : 0.0f;
-                osc_[i].SetFreq(f * (1.0f + off));
+                osc_[i].SetFreq(f * uniMul_[i]);
                 sig += osc_[i].Process();
             }
-            sig *= 1.0f / (float)u;
+            sig *= uniGain_;
             sig += sub_.Process() * subLvl;
         } else {  // ---- wavetable: scan + FM + fold ----
             float pinc = f / sr_;
@@ -211,14 +220,26 @@ class Voice {
         }
         // Pre-filter saturation -> grit (and dirties the filter for fat/acid tones).
         float drv = Saturate(sig, drive) * 0.6f;
-        if (filterType < 0.5f) {  // clean 2-pole Svf
-            flt_.SetFreq(fc);
-            flt_.SetRes(res * 0.85f);
+        // Filter coefficients only depend on (fc, res, filter type). SetFreq is costly
+        // (Svf: sinf+powf; Moog: a polynomial), so skip it on samples where none changed
+        // -- a big saving for static-filter patches (cutoff held, no filter envelope).
+        const int fltSel = (filterType < 0.5f) ? 0 : 1;
+        const bool coefDirty = (fc != lastFc_) || (res != lastRes_) || (fltSel != lastFltSel_);
+        lastFc_ = fc;
+        lastRes_ = res;
+        lastFltSel_ = fltSel;
+        if (fltSel == 0) {  // clean 2-pole Svf
+            if (coefDirty) {
+                flt_.SetFreq(fc);
+                flt_.SetRes(res * 0.85f);
+            }
             flt_.Process(drv);
             return flt_.Low() * env * vel_;
         }
-        mflt_.SetFreq(fc);
-        mflt_.SetRes(res * 0.95f);  // fat 4-pole MoogLadder
+        if (coefDirty) {
+            mflt_.SetFreq(fc);
+            mflt_.SetRes(res * 0.95f);  // fat 4-pole MoogLadder
+        }
         return mflt_.Process(drv) * env * vel_;
     }
 
@@ -245,6 +266,13 @@ class Voice {
     float sr_ = 48000.f;
     float wtPhase_ = 0.f, fmPhase_ = 0.f;  // wavetable carrier + FM modulator phases
     bool gate_ = false;
+    // Cached per-block work (sentinels force a recompute on the first sample):
+    float lastFc_ = -1.f, lastRes_ = -1.f;       // filter coefficients (see Process)
+    int lastFltSel_ = -1;                        // 0 = Svf, 1 = Moog
+    float uniMul_[kUni] = {1.f, 1.f, 1.f, 1.f};  // unison detune frequency multipliers
+    float uniGain_ = 1.f;                        // 1 / unison count
+    int lastU_ = -1;                             // unison count the multipliers were built for
+    float lastDetune_ = -1.f;
 };
 
 }  // namespace synthbox

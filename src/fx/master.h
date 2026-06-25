@@ -44,7 +44,7 @@ class MasterChain {
         sm_vol_ = vol_;
         sm_cut_ = cut01_;
         sm_res_ = res01_;
-        par_ = 1.0f - expf(-48.0f / (0.015f * sr_));  // assumes 48-sample blocks
+        par_ = 1.0f - expf(-static_cast<float>(params::audio::kBlockSize) / (0.015f * sr_));
         // DC blocker: one-pole high-pass ~20 Hz to strip any offset built up by
         // resonant filters / wavefolding / drive before it eats output headroom.
         dc_r_ = 1.0f - (2.0f * 3.14159265f * 20.0f / sr_);
@@ -106,13 +106,15 @@ class MasterChain {
   private:
     // Peak limiter: scale both channels by a shared gain that drops fast when the
     // louder channel would exceed the ceiling and recovers slowly. Keeps the mix
-    // under the ceiling without the harshness of per-sample hard clipping.
+    // under the ceiling without the harshness of per-sample hard clipping. The final
+    // clamp to [-1, 1] is the backstop for the sub-millisecond attack slip, so the
+    // output can never leave range whatever the limiter gain is mid-transient.
     inline void Limit(float& l, float& r) {
         const float peak = fmaxf(fabsf(l), fabsf(r));
         const float desired = peak > kCeiling ? kCeiling / peak : 1.0f;
         gain_ += (desired - gain_) * (desired < gain_ ? atk_ : rel_);
-        l *= gain_;
-        r *= gain_;
+        l = daisysp::fclamp(l * gain_, -1.0f, 1.0f);
+        r = daisysp::fclamp(r * gain_, -1.0f, 1.0f);
     }
 
     // One-pole DC-blocking high-pass per channel: y = x - x1 + R*y1.
