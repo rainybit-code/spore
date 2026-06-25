@@ -1,6 +1,6 @@
 # Build + flash over USB DFU (no programmer needed).
 # Put the device in the bootloader first: hold BOOT, tap RESET
-# (or hold BOTH footswitches for 2s to trigger the DFU reboot gesture).
+# (or send MIDI CC 119 >= 64 from the editor to reboot into DFU).
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "env.ps1")
 $root = Split-Path $PSScriptRoot -Parent
