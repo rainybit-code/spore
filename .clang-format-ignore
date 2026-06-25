@@ -1,0 +1,4 @@
+# Vendored sources keep their upstream formatting.
+src/hothouse.cpp
+src/hothouse.h
+src/usb_identity.c

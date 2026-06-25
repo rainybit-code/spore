@@ -14,6 +14,18 @@ permissions:
   contents: write        # needed to create Releases on tag builds
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check formatting (clang-format)
+        run: |
+          clang-format --version
+          # Vendored sources keep their upstream formatting (also in .clang-format-ignore).
+          find src \( -name '*.h' -o -name '*.cpp' -o -name '*.c' \) \
+            ! -name 'hothouse.*' ! -name 'usb_identity.c' -print0 \
+            | xargs -0 clang-format --dry-run --Werror
+
   build:
     runs-on: ubuntu-latest
     steps:
