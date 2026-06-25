@@ -39,7 +39,7 @@
     <text class="t" x="212" y="98">3 Toggles</text><text class="s" x="212" y="114">mode · var · FX</text>
 
     <rect class="box" x="362" y="78" width="170" height="46" rx="10"/>
-    <text class="t" x="378" y="98">2 Footswitches</text><text class="s" x="378" y="114">bypass · action · DFU</text>
+    <text class="t" x="378" y="98">2 Footswitches</text><text class="s" x="378" y="114">bypass · action</text>
 
     <rect class="box" x="548" y="78" width="160" height="46" rx="10"/>
     <text class="t" x="564" y="98">Analog sensor</text><text class="s" x="564" y="114">light / pressure (ADC)</text>

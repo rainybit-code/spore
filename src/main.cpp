@@ -13,7 +13,7 @@
 //    TOGGLE 3 : FX    (UP=off    MIDDLE=delay      DOWN=reverb)
 //    FOOTSW 1 : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
 //    FOOTSW 2 : mode action (freeze / re-seed)
-//    Hold BOTH footswitches 2s -> reboot to DFU for flashing.
+//  Enter DFU for flashing over MIDI (CC 119 >= 64) or via the Seed's BOOT+RESET buttons.
 // =============================================================================
 #include "daisy_seed.h"
 #include "hothouse.h"
@@ -287,7 +287,7 @@ int main() {
     // (Motion IMU is tier-2 / deferred -- see io/imu.h.)
     g_sensors.Init(hw);  // re-inits ADC to add analog input on A0/D15
 
-    // Footswitch LEDs (pins 22/23 are free outside the DFU flash gesture).
+    // Footswitch LEDs.
     led1.Init(hw.seed.GetPin(Hothouse::LED_1), false);
     led2.Init(hw.seed.GetPin(Hothouse::LED_2), false);
 
@@ -318,7 +318,6 @@ int main() {
         led2.Update();
 
         hw.DelayMs(1);  // poll USB MIDI often so the RX FIFO never backs up (dropped notes)
-        hw.CheckResetToBootloader();
     }
     return 0;
 }

@@ -43,7 +43,9 @@ Spore currently targets one platform:
 | **Footsw 1** | **Tap** = engage/bypass · **Hold** = edit FX (knobs become FX controls) |
 | **Footsw 2** | Mode action - Granular **freeze**, Generative **re-seed** |
 | **LED 1 / 2**| Engaged state (mid = editing FX) / active FX |
-| Hold **both** footswitches 2s | Reboot to **DFU** for flashing |
+
+Enter DFU for flashing over MIDI (**CC 119** ≥ 64, e.g. from Propagator) or with the Daisy
+Seed's **BOOT + RESET** buttons.
 
 Audio: Hothouse stereo **in** and **out** (1/4" jacks). Synth & Generative ignore the
 input (they generate); Granular records and reuses it.

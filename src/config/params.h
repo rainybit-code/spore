@@ -20,7 +20,7 @@
 //                ... or FX params while editing (hold FOOTSW 1) -- see `params::fx`
 //    FOOTSW 1  : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
 //    FOOTSW 2  : mode action       (Granular = freeze, Generative = re-seed)
-//    (hold BOTH footswitches 2s  -> reboot to DFU for flashing)
+//    (DFU for flashing: MIDI CC 119 >= 64, or the Seed's BOOT+RESET buttons)
 // =============================================================================
 #pragma once
 

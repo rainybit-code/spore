@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build + flash over USB DFU (no programmer needed).
 # Put the device in the bootloader first: hold BOOT, tap RESET
-# (or hold BOTH footswitches for 2s to trigger the DFU reboot gesture).
+# (or send MIDI CC 119 >= 64 from the editor to reboot into DFU).
 set -euo pipefail
 . "$(dirname "$0")/env.sh"
 cd "$(dirname "$0")/.."

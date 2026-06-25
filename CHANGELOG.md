@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Removed the "hold both footswitches → DFU" gesture.** Enter DFU for flashing over MIDI
+  (CC 119 ≥ 64, e.g. from Propagator) or with the Daisy Seed's BOOT+RESET buttons. Frees the
+  footswitch combinations for upcoming features (e.g. presets).
 - **Lower audio-CPU on the voice path** (no audible change): the per-voice filter only
   recomputes its coefficients when cutoff / resonance / filter-type actually change, so
   static-filter patches skip a `sinf`+`powf` (Svf) or coefficient polynomial (Moog) every
