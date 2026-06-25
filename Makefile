@@ -36,7 +36,20 @@ APP_TYPE = BOOT_SRAM
 # Core location and the generic Daisy Makefile (defines: all, clean,
 # program-dfu, program-boot, etc.).
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
+
+# Install the fast (10 ms) internal-DFU bootloader: Propagator reboots the device
+# into the bootloader on demand (firmware: ResetToBootloader(DAISY_INFINITE_TIMEOUT),
+# MIDI CC 118), so the power-up DFU window can be short for near-instant boot.
+# wildcard keeps this version-agnostic across libDaisy submodule bumps.
+BOOT_BIN = $(wildcard $(SYSTEM_FILES_DIR)/dsy_bootloader_*-intdfu-10ms.bin)
+
 include $(SYSTEM_FILES_DIR)/Makefile
+
+# Print the bootloader binary path (CI publishes it alongside the app so Propagator
+# can install it; matches whatever `make program-boot` flashes).
+.PHONY: print-boot-bin
+print-boot-bin:
+	@echo $(BOOT_BIN)
 
 # Extra float optimization for the audio DSP hot paths. -ffast-math relaxes IEEE
 # strictness (reassociation, reciprocals, no math-errno, fast fp-contract), which

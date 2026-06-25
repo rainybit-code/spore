@@ -87,6 +87,10 @@ jobs:
           for ext in bin hex elf; do
             cp "build/daisy_synth.$ext" "dist/spore-${V}.$ext"
           done
+          # Publish the Daisy bootloader too (unmodified, from libDaisy / Electrosmith, MIT)
+          # so Propagator can install it (internal flash @ 0x08000000) and then flash the app
+          # (QSPI @ 0x90040000). Matches whatever `make program-boot` installs.
+          cp "$(make -s print-boot-bin)" "dist/spore-${V}-bootloader.bin"
           ls -l dist
           # size report (handy in the build log)
           arm-none-eabi-size build/daisy_synth.elf || true

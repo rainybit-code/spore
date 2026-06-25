@@ -195,9 +195,12 @@ git clone --recurse-submodules https://github.com/rainybit-code/spore.git
 4. **Install the bootloader (one time)**: Spore runs from SRAM via the Daisy bootloader
    (it outgrew the 128 KB internal flash). Put the Daisy in DFU mode (hold **BOOT**, tap
    **RESET**) and run `scripts/install-bootloader.sh` (or `.ps1`) once.
-5. **Flash the app**: reset the Daisy so the **bootloader's** DFU window opens (the LED
-   pulses for ~2 s right after reset), then run `scripts/flash.sh` (or `.ps1`). The app is
-   written to QSPI; the bootloader copies it to SRAM at power-up.
+5. **Flash the app** (written to QSPI; the bootloader copies it to SRAM and boots in ~10 ms):
+   - **Easiest — Propagator**: it reboots the device into the bootloader (MIDI **CC 118**)
+     and flashes over WebUSB. Fully automated, no button timing.
+   - **Manual**: run `scripts/flash.sh` (or `.ps1`) with the device in the bootloader's DFU.
+     A freshly-bootloadered board (no app yet) waits there automatically; an already-running
+     board can be put back into DFU by sending **CC 118 ≥ 64** (or just use Propagator).
 
 ## Project layout
 
@@ -245,7 +248,9 @@ CI (GitHub Actions, [`.github/workflows/firmware.yml`](.github/workflows/firmwar
 builds the firmware on every push/PR. Versioning is [SemVer](https://semver.org/) via git
 tags; pushing a `vX.Y.Z` tag builds and publishes a **GitHub Release** with
 `spore-vX.Y.Z.{bin,hex,elf}` attached, using the matching [`CHANGELOG.md`](CHANGELOG.md)
-section as the release notes.
+section as the release notes. The release also includes `spore-vX.Y.Z-bootloader.bin` (the
+unmodified Daisy bootloader from libDaisy) so Propagator can install the bootloader and flash
+the app in one place — bootloader → internal flash `0x08000000`, app → QSPI `0x90040000`.
 
 ```sh
 # 1. add your notes under "## [Unreleased]" in CHANGELOG.md

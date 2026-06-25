@@ -144,6 +144,11 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, MidiContext ctx) {
                     varSel = cc.value < 43 ? 0 : (cc.value < 86 ? 1 : 2);
                 else if (n == params::midi::kCcSysReboot && cc.value >= 64)
                     daisy::System::ResetToBootloader(daisy::System::BootloaderMode::STM);
+                else if (n == params::midi::kCcDaisyReboot && cc.value >= 64)
+                    // Reflash the app: jump to the Daisy bootloader and hold its DFU open so
+                    // Propagator can flash over WebUSB without racing the power-up window.
+                    daisy::System::ResetToBootloader(
+                        daisy::System::BootloaderMode::DAISY_INFINITE_TIMEOUT);
             } break;
             case daisy::SystemCommon: {
                 if (msg.sc_type != daisy::SystemExclusive) break;

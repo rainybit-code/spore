@@ -11,13 +11,18 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   existing soft-takeover, so physical pots don't jump. LEDs show the active preset
   (right = 1, left = 2, both = 3).
 - **Run from SRAM via the Daisy bootloader** (`APP_TYPE=BOOT_SRAM`). The firmware outgrew the
-  128 KB internal flash, so it now loads from QSPI into SRAM at boot — hundreds of KB of
-  headroom. **Flashing changed**: install the bootloader once with
-  `scripts/install-bootloader.{sh,ps1}`, then flash the app with `scripts/flash.{sh,ps1}`.
-  The wavetables moved to SDRAM to fit the SRAM build's smaller default `.bss`.
-- **Removed the "hold both footswitches → DFU" gesture.** Enter DFU for flashing over MIDI
-  (CC 119 ≥ 64, e.g. from Propagator) or with the Daisy Seed's BOOT+RESET buttons. Frees the
-  footswitch combinations for upcoming features (e.g. presets).
+  128 KB internal flash, so it now loads from QSPI into SRAM — hundreds of KB of headroom. Uses
+  the fast 10 ms bootloader (near-instant boot). **Flashing changed**: install the bootloader
+  once with `scripts/install-bootloader.{sh,ps1}`, then flash the app with
+  `scripts/flash.{sh,ps1}` — or let Propagator do it. The wavetables moved to SDRAM to fit the
+  SRAM build's smaller default `.bss`.
+- **Automated/remote flashing.** **CC 118 ≥ 64** reboots into the Daisy bootloader with an
+  infinite DFU window, so Propagator can reflash the app over WebUSB without any button timing.
+  (CC 119 still reboots to the STM ROM DFU, now used to update the bootloader itself.) Releases
+  also publish `spore-vX.Y.Z-bootloader.bin` so the editor can install the bootloader too.
+- **Removed the "hold both footswitches → DFU" gesture.** Enter DFU over MIDI (CC 118 for the
+  app, CC 119 for the bootloader) or with the Daisy Seed's BOOT+RESET buttons. Frees the
+  footswitch combinations for presets.
 - **Lower audio-CPU on the voice path** (no audible change): the per-voice filter only
   recomputes its coefficients when cutoff / resonance / filter-type actually change, so
   static-filter patches skip a `sinf`+`powf` (Svf) or coefficient polynomial (Moog) every

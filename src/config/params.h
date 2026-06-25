@@ -20,7 +20,7 @@
 //                ... or FX params while editing (hold FOOTSW 1) -- see `params::fx`
 //    FOOTSW 1  : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
 //    FOOTSW 2  : mode action       (Granular = freeze, Generative = re-seed)
-//    (DFU for flashing: MIDI CC 119 >= 64, or the Seed's BOOT+RESET buttons)
+//    (DFU: MIDI CC 118 = reflash app / CC 119 = reflash bootloader / Seed BOOT+RESET)
 // =============================================================================
 #pragma once
 
@@ -214,7 +214,9 @@ constexpr int kCcSynthBase = 40;   // CC 40.. -> extended synth params (see conf
 constexpr int kCcTempo = 14;       // CC 14 -> internal clock BPM (0..127 -> 40..200)
 constexpr int kCcDelaySync =
     15;  // CC 15 -> delay tempo-sync division (0 off / 1/4 / 1/8 / 1/8. / 1/16)
-constexpr int kCcSysReboot = 119;  // CC 119 >=64 -> reboot to STM DFU bootloader (remote flashing)
+constexpr int kCcSysReboot = 119;  // CC 119 >=64 -> STM ROM DFU (update the bootloader itself)
+constexpr int kCcDaisyReboot =
+    118;  // CC 118 >=64 -> Daisy bootloader, infinite DFU (reflash the app)
 // Master output stage + control-surface-over-MIDI
 constexpr int kCcMasterVol = 7;        // CC 7  -> master volume (standard MIDI volume)
 constexpr int kCcMasterFiltType = 88;  // CC 88 -> master filter (0 off / 1 LP / 2 BP / 3 HP)

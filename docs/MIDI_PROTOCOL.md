@@ -40,7 +40,8 @@ means depends on the active mode. All numbers are defined in
 | 91     | **Footswitch 1** — value ≥ 64 = bypassed, < 64 = engaged |
 | 92     | **Footswitch 2** — value ≥ 64 triggers the mode action (freeze / re-seed) |
 | 93     | **VAR (Toggle 2)** per-mode variant (thirds: 0 / 1 / 2) |
-| 119    | Reboot to **DFU** bootloader when value ≥ 64 (remote flashing) |
+| 118    | Reboot to the **Daisy bootloader** (infinite DFU) when value ≥ 64 — reflash the **app** (QSPI). Use this to flash a firmware update. |
+| 119    | Reboot to the **STM ROM DFU** when value ≥ 64 — reflash the **bootloader** itself (internal flash). Rarely needed. |
 
 **Device → editor echo (live 2-way sync):** the firmware also *transmits* these CCs when the
 matching hardware control changes — mode/FX/VAR toggles (16/17/93), the 12 shift-layer knobs
