@@ -44,6 +44,11 @@ Spore currently targets one platform:
 | **Footsw 2** | Mode action - Granular **freeze**, Generative **re-seed** |
 | **LED 1 / 2**| Engaged state (mid = editing FX) / active FX |
 
+**Presets** - three per mode, saved in QSPI. **Hold Footsw 2** to enter preset mode, then
+**flip Toggle 2** to recall slot 1/2/3 for the current mode (so the slot is the variant
+position). While holding Footsw 2, **tap Footsw 1** to save the current sound to the
+selected slot. The LEDs show the active preset: right = 1, left = 2, both = 3.
+
 Enter DFU for flashing over MIDI (**CC 119** ≥ 64, e.g. from Propagator) or with the Daisy
 Seed's **BOOT + RESET** buttons.
 
@@ -187,8 +192,15 @@ git clone --recurse-submodules https://github.com/rainybit-code/spore.git
    scripts/setup.sh        # Windows: scripts\setup.ps1
    ```
 3. **Build**: `scripts/build.sh` (or `.ps1`, or VS Code task *build*) → `build/daisy_synth.bin`.
-4. **Flash** (via USB DFU): put the Daisy in DFU mode (hold **BOOT**, tap
-   **RESET**), then `scripts/flash.sh` (or `.ps1`).
+4. **Install the bootloader (one time)**: Spore runs from SRAM via the Daisy bootloader
+   (it outgrew the 128 KB internal flash). Put the Daisy in DFU mode (hold **BOOT**, tap
+   **RESET**) and run `scripts/install-bootloader.sh` (or `.ps1`) once.
+5. **Flash the app** (written to QSPI; the bootloader copies it to SRAM and boots in ~10 ms):
+   - **Easiest — Propagator**: it reboots the device into the bootloader (MIDI **CC 118**)
+     and flashes over WebUSB. Fully automated, no button timing.
+   - **Manual**: run `scripts/flash.sh` (or `.ps1`) with the device in the bootloader's DFU.
+     A freshly-bootloadered board (no app yet) waits there automatically; an already-running
+     board can be put back into DFU by sending **CC 118 ≥ 64** (or just use Propagator).
 
 ## Project layout
 
@@ -203,7 +215,7 @@ src/
   io/                 controls, knobs (shift-layer soft-takeover), midi_in,
                       clock (MIDI clock), sensors (analog ADC)
 lib/                  libDaisy + DaisySP (git submodules)
-scripts/              setup / build / flash / build-libs / clean / release (.sh + .ps1)
+scripts/              setup / build / flash / install-bootloader / clean / release (.sh + .ps1)
 pd/                   Pure Data sketches for prototyping DSP ideas
 ```
 
@@ -236,7 +248,9 @@ CI (GitHub Actions, [`.github/workflows/firmware.yml`](.github/workflows/firmwar
 builds the firmware on every push/PR. Versioning is [SemVer](https://semver.org/) via git
 tags; pushing a `vX.Y.Z` tag builds and publishes a **GitHub Release** with
 `spore-vX.Y.Z.{bin,hex,elf}` attached, using the matching [`CHANGELOG.md`](CHANGELOG.md)
-section as the release notes.
+section as the release notes. The release also includes `spore-vX.Y.Z-bootloader.bin` (the
+unmodified Daisy bootloader from libDaisy) so Propagator can install the bootloader and flash
+the app in one place — bootloader → internal flash `0x08000000`, app → QSPI `0x90040000`.
 
 ```sh
 # 1. add your notes under "## [Unreleased]" in CHANGELOG.md
@@ -245,8 +259,9 @@ section as the release notes.
 scripts/release.sh v0.2.0
 ```
 
-Flash a release `.bin` over USB DFU (hold **BOOT**, tap **RESET**, then
-`scripts/flash.*`), or drag the `.bin` into the [Daisy Web Programmer](https://flash.daisy.audio).
+Flash a release `.bin` after the bootloader is installed (see *Getting started*): reset
+into the bootloader's DFU window, then `scripts/flash.*`, or drag the `.bin` into the
+[Daisy Web Programmer](https://flash.daisy.audio) (which writes it through the bootloader).
 
 ## License & credits
 

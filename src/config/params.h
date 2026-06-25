@@ -20,7 +20,7 @@
 //                ... or FX params while editing (hold FOOTSW 1) -- see `params::fx`
 //    FOOTSW 1  : tap = engage/bypass | HOLD = edit FX (knobs -> FX, soft-takeover)
 //    FOOTSW 2  : mode action       (Granular = freeze, Generative = re-seed)
-//    (DFU for flashing: MIDI CC 119 >= 64, or the Seed's BOOT+RESET buttons)
+//    (DFU: MIDI CC 118 = reflash app / CC 119 = reflash bootloader / Seed BOOT+RESET)
 // =============================================================================
 #pragma once
 
@@ -185,6 +185,20 @@ constexpr float kEchoDeadband = 0.008f;  // min knob move to mirror back over MI
 }  // namespace ui
 
 // ----------------------------------------------------------------------------
+//  Presets               (io/presets.h: 3 slots per mode, stored in QSPI)
+//    Hold FOOTSWITCH 2 to enter preset mode; the Toggle-2 position selects the
+//    slot. Flip Toggle 2 to recall a slot; tap FOOTSWITCH 1 (while holding FS2)
+//    to save the current sound to the slot at the Toggle-2 position. While held,
+//    the LEDs show the active preset: right = 1, left = 2, both = 3.
+// ----------------------------------------------------------------------------
+namespace preset {
+constexpr float kHoldMs = 350.0f;           // FS2 hold time to enter preset mode
+constexpr uint32_t kBlinkMs = 200;          // preset-indicator LED blink (half period)
+constexpr uint32_t kSaveFlashMs = 500;      // duration of the post-save confirm flash
+constexpr uint32_t kSaveFlashBlinkMs = 60;  // fast blink during the save confirm
+}  // namespace preset
+
+// ----------------------------------------------------------------------------
 //  MIDI management interface   (USB MIDI <-> browser WebMIDI tool)
 //    CC drives the live knob values as "virtual knobs"; see docs/MIDI_PROTOCOL.md
 //    for the full contract (CC map + SysEx).
@@ -200,7 +214,9 @@ constexpr int kCcSynthBase = 40;   // CC 40.. -> extended synth params (see conf
 constexpr int kCcTempo = 14;       // CC 14 -> internal clock BPM (0..127 -> 40..200)
 constexpr int kCcDelaySync =
     15;  // CC 15 -> delay tempo-sync division (0 off / 1/4 / 1/8 / 1/8. / 1/16)
-constexpr int kCcSysReboot = 119;  // CC 119 >=64 -> reboot to STM DFU bootloader (remote flashing)
+constexpr int kCcSysReboot = 119;  // CC 119 >=64 -> STM ROM DFU (update the bootloader itself)
+constexpr int kCcDaisyReboot =
+    118;  // CC 118 >=64 -> Daisy bootloader, infinite DFU (reflash the app)
 // Master output stage + control-surface-over-MIDI
 constexpr int kCcMasterVol = 7;        // CC 7  -> master volume (standard MIDI volume)
 constexpr int kCcMasterFiltType = 88;  // CC 88 -> master filter (0 off / 1 LP / 2 BP / 3 HP)

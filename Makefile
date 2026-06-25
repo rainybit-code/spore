@@ -25,10 +25,31 @@ C_INCLUDES = -Isrc
 LIBDAISY_DIR = lib/libDaisy
 DAISYSP_DIR  = lib/DaisySP
 
+# Run the app from SRAM via the Daisy bootloader instead of the 128 KB internal
+# flash -- the firmware outgrew internal flash, and SRAM gives hundreds of KB of
+# headroom. The app binary is flashed to QSPI (the bootloader copies it to SRAM at
+# boot). One-time: install the bootloader with `make program-boot`; then flash the
+# app with `make program-dfu` (or drag the .bin into the Daisy web programmer's
+# bootloader slot). Presets live high in QSPI, clear of the app (see io/presets.h).
+APP_TYPE = BOOT_SRAM
+
 # Core location and the generic Daisy Makefile (defines: all, clean,
-# program-dfu, program, etc.).
+# program-dfu, program-boot, etc.).
 SYSTEM_FILES_DIR = $(LIBDAISY_DIR)/core
+
+# Install the fast (10 ms) internal-DFU bootloader: Propagator reboots the device
+# into the bootloader on demand (firmware: ResetToBootloader(DAISY_INFINITE_TIMEOUT),
+# MIDI CC 118), so the power-up DFU window can be short for near-instant boot.
+# wildcard keeps this version-agnostic across libDaisy submodule bumps.
+BOOT_BIN = $(wildcard $(SYSTEM_FILES_DIR)/dsy_bootloader_*-intdfu-10ms.bin)
+
 include $(SYSTEM_FILES_DIR)/Makefile
+
+# Print the bootloader binary path (CI publishes it alongside the app so Propagator
+# can install it; matches whatever `make program-boot` flashes).
+.PHONY: print-boot-bin
+print-boot-bin:
+	@echo $(BOOT_BIN)
 
 # Extra float optimization for the audio DSP hot paths. -ffast-math relaxes IEEE
 # strictness (reassociation, reciprocals, no math-errno, fast fp-contract), which
@@ -40,8 +61,8 @@ CFLAGS += -ffast-math -fno-finite-math-only
 
 # Link-time optimization. The app is effectively one big translation unit
 # (main.cpp pulls in all the header-only DSP), so the win is modest, but it trims
-# ~1.5 KB of the scarce 128 KB internal flash and lets cross-object inlining reach
-# hothouse.cpp. Needs the flag at compile and link.
+# code size and lets cross-object inlining reach hothouse.cpp. Needs the flag at
+# compile and link.
 CFLAGS  += -flto
 LDFLAGS += -flto
 

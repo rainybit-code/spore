@@ -24,11 +24,13 @@
 namespace synthbox {
 
 // ---- shared wavetables: banks of single-cycle frames, each morphing from sine
-// (frame 0) to a richer timbre. In fast internal RAM (.bss); no flash cost.
+// (frame 0) to a richer timbre. ~80 KB, so they live in SDRAM (filled once at
+// boot, read-only in the hot path) rather than the small DTCMRAM .bss the app
+// uses when running from the SRAM bootloader.
 static constexpr int kWtBanks = 5;  // Saw / Square / Organ / Vocal / Digital
 static constexpr int kWtFrames = 8;
 static constexpr int kWtLen = 512;  // power of two => phase masking
-static float g_wt[kWtBanks][kWtFrames][kWtLen];
+static float DSY_SDRAM_BSS g_wt[kWtBanks][kWtFrames][kWtLen];
 
 inline void WtNormalizeFrame(int b, int f) {
     float peak = 1e-6f;

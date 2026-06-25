@@ -1,6 +1,7 @@
-# Build + flash over USB DFU (no programmer needed).
-# Put the device in the bootloader first: hold BOOT, tap RESET
-# (or send MIDI CC 119 >= 64 from the editor to reboot into DFU).
+# Build + flash the app to the Daisy over USB DFU.
+# Spore runs from SRAM via the Daisy bootloader: install it once with
+# scripts\install-bootloader.ps1, then reset the Daisy so the bootloader's DFU
+# window opens (the LED pulses for ~2s) and run this. The app is written to QSPI.
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "env.ps1")
 $root = Split-Path $PSScriptRoot -Parent
@@ -9,6 +10,6 @@ try {
   Write-Host "Building..." -ForegroundColor Cyan
   make
   Write-Host ""
-  Write-Host "Put the Daisy in DFU mode (hold BOOT, tap RESET), then it will flash." -ForegroundColor Yellow
+  Write-Host "Reset the Daisy into the bootloader DFU window (LED pulsing), then it will flash." -ForegroundColor Yellow
   make program-dfu
 } finally { Pop-Location }
