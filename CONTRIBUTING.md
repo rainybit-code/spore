@@ -76,6 +76,32 @@ shared between them lives in globals in `main.cpp`:
 If you introduce new shared state, document which context owns it and prefer a single
 writer.
 
+## Stress-testing CPU load
+
+The audio callback has a hard deadline (one block, `kBlockSize`/48 kHz). A `CpuLoadMeter`
+(`g_cpu`) tracks average/peak callback load and reports it over SysEx (cmd `0x02`); a
+watchdog (`params::watchdog`) sheds the global FX and halves Synth polyphony after sustained
+overload. When you touch the DSP or the voice count, verify the **worst case** still has
+headroom — and watch the **peak**, not just the average, since a single over-deadline block
+crackles even when the average looks fine.
+
+The heaviest configuration the engine can produce:
+
+- **Mode = Synth**, **FX = Reverb** (`ReverbSc` is the costly one), **master filter on** with
+  high resonance.
+- Synth params (CC 40+): **voices = max (6)**, **unison = max (4)**, **engine = analog**
+  (4 PolyBLEP osc + sub per voice), **filter = Moog** (4-pole), **drive up**.
+- **LFO→cutoff** depth up and **chaos speed** (CC 18) maxed so modulation churns every block.
+- **MIDI-flood**: hold all 6 voices *and* retrigger fast with a short attack/decay, so every
+  voice's filter envelope stays in motion — that is what exercises the filter-coefficient
+  path on all voices at once (see the control-rate `SetFreq` in `dsp/voice.h`).
+
+This pins 6 voices × 5 oscillators + 6 Moog filters + `ReverbSc` + master filter + limiter
+simultaneously. A "pass" is: no audible crackle in the ~150 ms before the watchdog trips, and
+the watchdog trips and then recovers cleanly (LED returns to heartbeat, full polyphony) once
+the flood stops. Granular at 12 grains / max density + reverb is a lighter, separate path
+worth a second check.
+
 ## Build scripts
 
 Each script exists as a `.sh`/`.ps1` pair (`scripts/build.{sh,ps1}`, etc.). They are thin

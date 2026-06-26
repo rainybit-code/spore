@@ -37,7 +37,7 @@ constexpr char kFwVersion[] = "0.4.0";
 //  Audio engine
 // ----------------------------------------------------------------------------
 namespace audio {
-constexpr int kBlockSize = 48;  // samples/channel per callback
+constexpr int kBlockSize = 64;  // samples/channel per callback (~1.3 ms @ 48 kHz)
 // Sample rate is set via SaiHandle config in main.cpp (48 kHz).
 }  // namespace audio
 

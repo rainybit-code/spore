@@ -223,24 +223,34 @@ class Voice {
         // Pre-filter saturation -> grit (and dirties the filter for fat/acid tones).
         float drv = Saturate(sig, drive) * 0.6f;
         // Filter coefficients only depend on (fc, res, filter type). SetFreq is costly
-        // (Svf: sinf+powf; Moog: a polynomial), so skip it on samples where none changed
-        // -- a big saving for static-filter patches (cutoff held, no filter envelope).
+        // (Svf: sinf+powf; Moog: a polynomial). Two savings stack:
+        //   1. skip it when nothing changed         -- free for static-filter patches.
+        //   2. update at CONTROL RATE (every kCoefInterval samples), not per sample --
+        //      a moving filter envelope changes fc every sample, which used to force a
+        //      per-sample SetFreq on every voice; on a chord that spiked one block past
+        //      the deadline and crackled. ~6 kHz coef updates are inaudible for sweeps.
+        // A filter-TYPE switch forces an immediate recompute so the new filter isn't stale.
         const int fltSel = (filterType < 0.5f) ? 0 : 1;
-        const bool coefDirty = (fc != lastFc_) || (res != lastRes_) || (fltSel != lastFltSel_);
-        lastFc_ = fc;
-        lastRes_ = res;
+        const bool typeChanged = (fltSel != lastFltSel_);
         lastFltSel_ = fltSel;
-        if (fltSel == 0) {  // clean 2-pole Svf
-            if (coefDirty) {
-                flt_.SetFreq(fc);
-                flt_.SetRes(res * 0.85f);
+        if (typeChanged) coefCountdown_ = 0;
+        if (--coefCountdown_ <= 0) {
+            coefCountdown_ = kCoefInterval;
+            if (fc != lastFc_ || res != lastRes_ || typeChanged) {
+                lastFc_ = fc;
+                lastRes_ = res;
+                if (fltSel == 0) {
+                    flt_.SetFreq(fc);
+                    flt_.SetRes(res * 0.85f);
+                } else {
+                    mflt_.SetFreq(fc);
+                    mflt_.SetRes(res * 0.95f);  // fat 4-pole MoogLadder
+                }
             }
+        }
+        if (fltSel == 0) {  // clean 2-pole Svf
             flt_.Process(drv);
             return flt_.Low() * env * vel_;
-        }
-        if (coefDirty) {
-            mflt_.SetFreq(fc);
-            mflt_.SetRes(res * 0.95f);  // fat 4-pole MoogLadder
         }
         return mflt_.Process(drv) * env * vel_;
     }
@@ -269,8 +279,10 @@ class Voice {
     float wtPhase_ = 0.f, fmPhase_ = 0.f;  // wavetable carrier + FM modulator phases
     bool gate_ = false;
     // Cached per-block work (sentinels force a recompute on the first sample):
+    static constexpr int kCoefInterval = 8;      // recompute filter coefs every N samples
     float lastFc_ = -1.f, lastRes_ = -1.f;       // filter coefficients (see Process)
     int lastFltSel_ = -1;                        // 0 = Svf, 1 = Moog
+    int coefCountdown_ = 0;                      // samples until the next coef recompute
     float uniMul_[kUni] = {1.f, 1.f, 1.f, 1.f};  // unison detune frequency multipliers
     float uniGain_ = 1.f;                        // 1 / unison count
     int lastU_ = -1;                             // unison count the multipliers were built for
