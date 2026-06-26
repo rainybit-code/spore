@@ -158,6 +158,120 @@ static void PresetSave(int mode, int slot) {
     g_preset_save_pending = true;
 }
 
+// ---- Patch over SysEx: dump / load + preset slots (docs/MIDI_PROTOCOL.md §3-4) ----
+// A "patch" is exactly what a preset stores (PresetData): the active mode's params,
+// the MODE + FX knob layers, FX select, delay sync, and the master stage. Values are
+// 7-bit (0..127) -- matches the CC editing granularity and keeps a full synth patch
+// (~72 bytes) well under libDaisy's 128-byte inbound SysEx buffer. The hooks below
+// reuse the QSPI capture/apply glue above and are wired into MidiContext; PumpMidi
+// calls them from the main loop, so they reply on the global `midi`.
+static int ModeParamCount(int mode) {
+    switch (mode) {
+        case MODE_GRANULAR:
+            return GR_COUNT;
+        case MODE_GENERATIVE:
+            return GP_COUNT;
+        default:
+            return SP_COUNT;
+    }
+}
+
+static inline uint8_t To7(float v01) {
+    int x = static_cast<int>(v01 * 127.0f + 0.5f);
+    return static_cast<uint8_t>(x < 0 ? 0 : (x > 127 ? 127 : x));
+}
+
+// Encode a captured patch into the 7-bit payload; returns the byte count written.
+static int EncodePatch(const PresetData& p, int mode, uint8_t* out) {
+    int j = 0;
+    out[j++] = 1;  // patch format version
+    out[j++] = static_cast<uint8_t>(mode);
+    out[j++] = p.fxMode;
+    out[j++] = p.delaySync;
+    out[j++] = p.masterFiltType;
+    out[j++] = To7(p.masterVol);
+    out[j++] = To7(p.masterCut);
+    out[j++] = To7(p.masterRes);
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) out[j++] = To7(p.modeKnobs[i]);
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) out[j++] = To7(p.fxKnobs[i]);
+    const int n = ModeParamCount(mode);
+    out[j++] = static_cast<uint8_t>(n);
+    for (int i = 0; i < n; ++i) out[j++] = To7(p.modeParams[i]);
+    return j;
+}
+
+// Decode the 7-bit payload back into a PresetData (+ its mode). false if malformed.
+static bool DecodePatch(const uint8_t* in, int len, PresetData& p, int& mode) {
+    if (len < 21) return false;
+    auto f = [](uint8_t x) { return static_cast<float>(x) / 127.0f; };
+    mode = in[1];
+    if (mode < 0 || mode >= MODE_COUNT) return false;
+    p.fxMode = in[2];
+    p.delaySync = in[3];
+    p.masterFiltType = in[4];
+    p.masterVol = f(in[5]);
+    p.masterCut = f(in[6]);
+    p.masterRes = f(in[7]);
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) p.modeKnobs[i] = f(in[8 + i]);
+    for (int i = 0; i < ShiftKnobs::kKnobs; ++i) p.fxKnobs[i] = f(in[14 + i]);
+    int n = in[20];
+    const int maxn = ModeParamCount(mode);
+    if (n > maxn) n = maxn;
+    if (len < 21 + n) return false;
+    for (int i = 0; i < n; ++i) p.modeParams[i] = f(in[21 + i]);
+    p.used = 1;
+    return true;
+}
+
+static void SxSendPatchDump() {  // 0x50: the active mode's full live patch
+    PresetData p;
+    PresetCapture(p, g_active);
+    uint8_t buf[80];  // F0 7D 50 + (<=70 payload) + F7
+    int j = 0;
+    buf[j++] = 0xF0;
+    buf[j++] = 0x7D;
+    buf[j++] = 0x50;
+    j += EncodePatch(p, g_active, buf + j);
+    buf[j++] = 0xF7;
+    midi.SendMessage(buf, j);
+}
+
+static void SxSendSlots() {  // 0x52: <mode> <used0> <used1> <used2> <active+1 | 0=none>
+    const PresetBank& bank = g_presetStore.GetSettings();
+    uint8_t buf[16];  // F0 7D 52 + mode + kPresetSlots + active + F7
+    int j = 0;
+    buf[j++] = 0xF0;
+    buf[j++] = 0x7D;
+    buf[j++] = 0x52;
+    buf[j++] = static_cast<uint8_t>(g_active);
+    for (int s = 0; s < kPresetSlots; ++s) buf[j++] = bank.slot[g_active][s].used ? 1 : 0;
+    const int act = g_active_preset[g_active];
+    buf[j++] = static_cast<uint8_t>(act < 0 ? 0 : act + 1);
+    buf[j++] = 0xF7;
+    midi.SendMessage(buf, j);
+}
+
+static void SxLoadPatch(const uint8_t* payload, int len) {
+    PresetData p;
+    int mode;
+    if (!DecodePatch(payload, len, p, mode)) return;
+    PresetApply(p, mode);
+    g_modeSel = mode;  // switch the device to the patch's mode (forced; a toggle move overrides)
+}
+
+static void SxPresetSave(int slot) {
+    if (slot < 0 || slot >= kPresetSlots) return;
+    PresetSave(g_active, slot);  // captures now; the main loop flushes the bank to QSPI
+    SxSendSlots();               // confirm the new occupancy back to the editor
+}
+
+static void SxPresetRecall(int slot) {
+    if (slot < 0 || slot >= kPresetSlots) return;
+    PresetLoad(g_active, slot);  // no-op on an empty slot
+    SxSendPatchDump();           // tell the editor the new live state ...
+    SxSendSlots();               // ... and which slot is now active
+}
+
 void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, size_t size) {
     g_cpu.OnBlockStart();
     hw.ProcessAllControls();
@@ -400,8 +514,10 @@ int main() {
     hw.StartAudio(AudioCallback);
 
     while (true) {
-        MidiContext mctx{g_modes[g_active], g_shift, g_clock,     g_cpu,    g_mod,   g_master,
-                         g_modeSel,         g_fxSel, g_delaySync, g_varSel, g_bypass};
+        MidiContext mctx{
+            g_modes[g_active], g_shift,      g_clock,        g_cpu,      g_mod,    g_master,
+            g_modeSel,         g_fxSel,      g_delaySync,    g_varSel,   g_bypass, SxSendPatchDump,
+            SxLoadPatch,       SxPresetSave, SxPresetRecall, SxSendSlots};
         if (PumpMidi(midi, mctx)) g_last_midi_ms = System::GetNow();
         EchoControls(midi, hw);            // mirror physical control changes back to the editor
         g_clock.Update(System::GetNow());  // drop back to internal tempo if clock stops

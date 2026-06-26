@@ -45,6 +45,14 @@ struct MidiContext {
     int& delaySync;            // [in/out] delay tempo-sync division
     int& varSel;               // [in/out] forced TOGGLE 2 variant (-1 = follow)
     bool& bypass;              // [in/out] effect bypass
+    // Patch / preset SysEx hooks (the state lives in main.cpp; a null hook = the
+    // command is unsupported). See docs/MIDI_PROTOCOL.md §3-4. `loadPatch` gets the
+    // payload bytes after `F0 7D 11`, with `len` excluding the trailing F7.
+    void (*sendPatch)(void);                 // 0x10 -> reply 0x50 (full patch dump)
+    void (*loadPatch)(const uint8_t*, int);  // 0x11 (set all live values at once)
+    void (*presetSave)(int);                 // 0x20 (save live state -> QSPI slot N)
+    void (*presetRecall)(int);               // 0x21 (recall slot N; also emits 0x50)
+    void (*sendSlots)(void);                 // 0x22 -> reply 0x52 (slot occupancy)
 };
 
 // Drain pending MIDI events: notes -> active mode; CC -> live knob values + state.
@@ -98,6 +106,10 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, MidiContext ctx) {
             case daisy::NoteOff: {
                 auto m = msg.AsNoteOff();
                 mode->NoteOff(static_cast<float>(m.note));
+            } break;
+            case daisy::ProgramChange: {  // Program Change N = recall preset slot N (alias for
+                                          // 0x21)
+                if (ctx.presetRecall) ctx.presetRecall(msg.AsProgramChange().program);
             } break;
             case daisy::ControlChange: {
                 auto cc = msg.AsControlChange();
@@ -192,6 +204,17 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, MidiContext ctx) {
                     uint8_t reply[6] = {
                         0xF0, 0x7D, 0x43, enc(modEngine.ChaosX()), enc(modEngine.ChaosY()), 0xF7};
                     midi.SendMessage(reply, 6);
+                } else if (cmd == 0x10) {  // full patch dump request -> device replies 0x50
+                    if (ctx.sendPatch) ctx.sendPatch();
+                } else if (cmd == 0x11) {  // patch load: set every live value at once
+                    if (ctx.loadPatch && sx.length > i + 2)
+                        ctx.loadPatch(&sx.data[i + 2], sx.length - (i + 2));
+                } else if (cmd == 0x20) {  // save the current patch to QSPI slot N
+                    if (ctx.presetSave && sx.length > i + 2) ctx.presetSave(sx.data[i + 2]);
+                } else if (cmd == 0x21) {  // recall QSPI slot N (device also emits a 0x50 dump)
+                    if (ctx.presetRecall && sx.length > i + 2) ctx.presetRecall(sx.data[i + 2]);
+                } else if (cmd == 0x22) {  // list slots -> device replies 0x52 (occupancy)
+                    if (ctx.sendSlots) ctx.sendSlots();
                 }
             } break;
             default:

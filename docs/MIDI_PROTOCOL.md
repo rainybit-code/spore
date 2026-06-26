@@ -114,30 +114,57 @@ Tempo feeds the synced delay (CC 15 division) and the clock-synced LFO rates
   reports the cached value — **no extra audio-CPU cost**. Propagator polls it (~20 Hz,
   only while the attractor canvas is visible) to draw the live chaos in the MOD pod.
 
-## 3. Full patch dump / load — SysEx 🔜 (Phase 2 → enables presets)
+## 3. Full patch dump / load — SysEx ✅ (in firmware)
 
-A "patch" = every live value: MODE-layer knobs ×6, FX-layer knobs ×6, mode select,
-FX select, and (later) mod/sensor routing. Encoded 14-bit per value (two 7-bit
-bytes) so there's no resolution loss.
+A **patch** is exactly what a preset stores: the active mode's extended params, the
+MODE-layer knobs ×6, the FX-layer knobs ×6, FX select, delay sync, and the master
+stage (volume / filter type / cutoff / resonance). Values are **7-bit** (`0..127`) —
+this matches the CC editing granularity and keeps a full synth patch (~72 bytes)
+under libDaisy's 128-byte inbound SysEx buffer. (14-bit via NRPN remains a possible
+future refinement; in practice every value originates from a 7-bit CC or a knob.)
 
-- `0x10` **Dump request** (web→device) → device replies `0x50` with the full patch.
-- `0x50` **Patch dump** (device→web).
-- `0x11` **Patch load** (web→device): set all live values at once.
+- `0x10` **Dump request** (web→device), no payload → device replies `0x50`.
+- `0x50` **Patch dump** (device→web): `F0 7D 50 <payload> F7`.
+- `0x11` **Patch load** (web→device): `F0 7D 11 <payload> F7` — sets all live values
+  at once and switches the device to the patch's mode.
 
-This is what keeps the web UI in sync with the device, and is the unit a preset
-stores.
+**Patch payload layout** (same bytes for `0x50` and `0x11`):
 
-## 4. Presets — SysEx + QSPI 🔜 (Phase 3, needs hardware)
+| Offset | Bytes | Field |
+|--------|-------|-------|
+| 0      | 1 | patch format version (`1`) |
+| 1      | 1 | **mode** (0 synth / 1 granular / 2 generative) — which mode the params below belong to |
+| 2      | 1 | FX select (0 off / 1 delay / 2 reverb) |
+| 3      | 1 | delay sync division (0 off / 1..4) |
+| 4      | 1 | master filter type (0 off / 1 LP / 2 BP / 3 HP) |
+| 5–7    | 3 | master volume · cutoff · resonance (each `0..127`) |
+| 8–13   | 6 | MODE-layer knobs 1–6 |
+| 14–19  | 6 | FX-layer knobs 1–6 |
+| 20     | 1 | **paramCount** = number of mode params that follow (synth 49 / granular 4 / generative 6) |
+| 21…    | paramCount | the active mode's extended params (`SP_*` / `GR_*` / `GP_*`, each `0..127`) |
+
+This keeps the web UI in sync with the device, and is the unit a preset stores.
+
+## 4. Presets — SysEx + QSPI ✅ (in firmware)
 
 Presets are patches (§3). Two stores:
 - **Browser librarian**: presets saved as JSON in `localStorage` / exported files.
-- **On-device**: saved to **QSPI flash** (`daisy::PersistentStorage` / `QSPIHandle`)
-  so they survive power-off and recall without the computer.
+- **On-device**: 3 slots **per mode** in **QSPI flash** (`daisy::PersistentStorage`),
+  indexed by the Toggle-2 position, so they survive power-off and recall without the
+  computer. The same slots are reachable by the hardware gesture (hold FOOTSWITCH 2,
+  pick the slot with Toggle 2, tap FOOTSWITCH 1 to save).
 
-- `0x20` **Save to slot** `N` (device writes current patch to QSPI slot N).
-- `0x21` **Recall slot** `N` (device loads slot N; also emits a `0x50` dump so the
-  UI follows). Program Change `N` is an alias for recall.
-- `0x22` **List slots** → reply `0x52` with slot names/occupancy.
+All slot commands act on the device's **currently active mode**.
+
+- `0x20` **Save to slot** `N` (web→device): device captures the current live sound
+  into QSPI slot `N`, then replies `0x52` with the updated occupancy.
+- `0x21` **Recall slot** `N` (web→device): device loads slot `N` (no-op if empty),
+  then emits a `0x50` dump (so the UI follows) **and** a `0x52` (active-slot update).
+  **Program Change** `N` is an alias for recall.
+- `0x22` **List slots** (web→device), no payload → reply `0x52`.
+- `0x52` **Slot list reply** (device→web): `F0 7D 52 <mode> <used0> <used1> <used2>
+  <active> F7` — `mode` is the active mode, `usedK` is 1 if slot K holds a preset,
+  and `active` is the last-loaded/saved slot as `slot+1` (`0` = none).
 
 ## 5. Sample upload — SysEx + QSPI 🔜 (Phase 4, biggest; needs hardware)
 
@@ -166,8 +193,9 @@ Flow:
 
 1. ✅ **Live control (CC) + MIDI clock** — firmware and the full Propagator editor
    are done (synth panel, mod matrix, sequencer, tempo/clock).
-2. 🔜 **Handshake + patch dump/load (SysEx)** — 2-way sync; central `Patch` store.
-3. 🔜 **Presets** — QSPI save/recall on device + browser librarian.
+2. ✅ **Handshake + patch dump/load (SysEx)** — 2-way sync via `0x10`/`0x50`/`0x11`.
+3. ✅ **Presets** — QSPI save/recall/list on device (`0x20`/`0x21`/`0x22`/`0x52`) +
+   browser librarian.
 4. 🔜 **Sample upload** — chunked SysEx → QSPI + a sample-player source.
 
 The web tool, **Propagator**, lives in a separate repo
