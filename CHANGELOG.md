@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.5.0] - 2026-06-26
 - **Patch dump/load + preset management over USB MIDI** (`docs/MIDI_PROTOCOL.md` §3-4).
   New SysEx commands let Propagator drive the on-device presets it previously couldn't see:
   `0x10`/`0x50` dump the full live patch (device → editor, so a hardware tweak or a recall
