@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Patch dump/load + preset management over USB MIDI** (`docs/MIDI_PROTOCOL.md` §3-4).
+  New SysEx commands let Propagator drive the on-device presets it previously couldn't see:
+  `0x10`/`0x50` dump the full live patch (device → editor, so a hardware tweak or a recall
+  syncs the UI), `0x11` loads a patch, and `0x20`/`0x21`/`0x22` save / recall / list the three
+  QSPI slots of the active mode, with `0x52` reporting slot occupancy + the active slot. A
+  Program Change is an alias for recall. The slots are the same ones the Footswitch-2 gesture
+  uses; the commands reuse the existing capture/apply glue. Patch values are 7-bit to stay
+  under libDaisy's 128-byte inbound SysEx buffer.
 
 ## [v0.4.0] - 2026-06-25
 - **Presets** (`io/presets.h`): three per mode, stored in QSPI. Hold Footswitch 2 to enter
