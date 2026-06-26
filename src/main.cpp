@@ -514,10 +514,10 @@ int main() {
     hw.StartAudio(AudioCallback);
 
     while (true) {
-        MidiContext mctx{g_modes[g_active], g_shift,        g_clock,         g_cpu,
-                         g_mod,             g_master,       g_modeSel,       g_fxSel,
-                         g_delaySync,       g_varSel,       g_bypass,        SxSendPatchDump,
-                         SxLoadPatch,       SxPresetSave,   SxPresetRecall,  SxSendSlots};
+        MidiContext mctx{
+            g_modes[g_active], g_shift,      g_clock,        g_cpu,      g_mod,    g_master,
+            g_modeSel,         g_fxSel,      g_delaySync,    g_varSel,   g_bypass, SxSendPatchDump,
+            SxLoadPatch,       SxPresetSave, SxPresetRecall, SxSendSlots};
         if (PumpMidi(midi, mctx)) g_last_midi_ms = System::GetNow();
         EchoControls(midi, hw);            // mirror physical control changes back to the editor
         g_clock.Update(System::GetNow());  // drop back to internal tempo if clock stops

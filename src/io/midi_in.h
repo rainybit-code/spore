@@ -107,7 +107,8 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, MidiContext ctx) {
                 auto m = msg.AsNoteOff();
                 mode->NoteOff(static_cast<float>(m.note));
             } break;
-            case daisy::ProgramChange: {  // Program Change N = recall preset slot N (alias for 0x21)
+            case daisy::ProgramChange: {  // Program Change N = recall preset slot N (alias for
+                                          // 0x21)
                 if (ctx.presetRecall) ctx.presetRecall(msg.AsProgramChange().program);
             } break;
             case daisy::ControlChange: {
