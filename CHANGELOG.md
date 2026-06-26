@@ -13,6 +13,15 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   Program Change is an alias for recall. The slots are the same ones the Footswitch-2 gesture
   uses; the commands reuse the existing capture/apply glue. Patch values are 7-bit to stay
   under libDaisy's 128-byte inbound SysEx buffer.
+- **Fix: intermittent crackle in Synth mode under load.** The crackle was a per-block CPU
+  spike, not sustained load (so the watchdog, which only sheds after ~150 ms, never caught
+  it): a moving filter envelope changed the cutoff every sample, forcing a per-sample
+  `SetFreq` (Svf `sinf`+`powf` / Moog polynomial) on every voice — and a chord put all 6
+  voices on that path at once, tipping a block past its deadline. The voice filter now
+  recomputes its coefficients at **control rate** (every 8 samples, ~6 kHz — inaudible for
+  sweeps) while keeping the existing "skip when unchanged" fast path for static patches.
+  The audio **block size also goes 48 → 64** (~1.3 ms @ 48 kHz) for more headroom against
+  transient spikes.
 
 ## [v0.4.0] - 2026-06-25
 - **Presets** (`io/presets.h`): three per mode, stored in QSPI. Hold Footswitch 2 to enter
