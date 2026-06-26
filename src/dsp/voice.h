@@ -282,7 +282,7 @@ class Voice {
     static constexpr int kCoefInterval = 8;      // recompute filter coefs every N samples
     float lastFc_ = -1.f, lastRes_ = -1.f;       // filter coefficients (see Process)
     int lastFltSel_ = -1;                        // 0 = Svf, 1 = Moog
-    int coefCountdown_ = 0;                       // samples until the next coef recompute
+    int coefCountdown_ = 0;                      // samples until the next coef recompute
     float uniMul_[kUni] = {1.f, 1.f, 1.f, 1.f};  // unison detune frequency multipliers
     float uniGain_ = 1.f;                        // 1 / unison count
     int lastU_ = -1;                             // unison count the multipliers were built for
