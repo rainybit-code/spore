@@ -5,6 +5,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.5.1] - 2026-09-07
 - **Maintenance release: vendored libDaisy bumped to upstream HEAD** (`c02245d` -> `cc146d5`).
   Four upstream commits — I2C4 alternate-function pin mapping fixes, SAI support for two blocks
   with no master, a TCA9534 I2C GPIO-expander driver, and README link updates. None of them touch
