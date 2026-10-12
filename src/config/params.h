@@ -144,8 +144,8 @@ constexpr float kDelayMaxMs = 1500.0f;
 constexpr float kDelayFbMax = 0.85f;       // feedback (keep < 1 to decay)
 constexpr float kDelayToneMinHz = 600.0f;  // feedback-path lowpass
 constexpr float kDelayToneMaxHz = 12000.0f;
-constexpr float kRevDecayMin = 0.60f;  // ReverbSc feedback (tail length)
-constexpr float kRevDecayMax = 0.95f;  // keep below runaway threshold
+constexpr float kRevDecayMin = 0.60f;    // ReverbSc feedback (tail length)
+constexpr float kRevDecayMax = 0.95f;    // keep below runaway threshold
 constexpr float kRevDampMinHz = 800.0f;  // ReverbSc LP (HF damping)
 constexpr float kRevDampMaxHz = 18000.0f;
 constexpr float kEditHoldMs = 350.0f;  // footswitch hold time to enter edit
@@ -168,10 +168,10 @@ constexpr float kResMax = 0.95f;  // keep below self-oscillation
 //    blocks, recover after kRecoverBlocks cool ones (1 block = kBlockSize/SR).
 // ----------------------------------------------------------------------------
 namespace watchdog {
-constexpr float kHotLoad = 0.88f;     // avg load above this counts as "hot"
-constexpr float kCoolLoad = 0.78f;    // ... and below this as "cool" (recover)
-constexpr int kOverloadBlocks = 60;   // ~60 ms hot   -> shed global FX / voices
-constexpr int kRecoverBlocks = 400;   // ~400 ms cool -> recover
+constexpr float kHotLoad = 0.88f;    // avg load above this counts as "hot"
+constexpr float kCoolLoad = 0.78f;   // ... and below this as "cool" (recover)
+constexpr int kOverloadBlocks = 60;  // ~60 ms hot   -> shed global FX / voices
+constexpr int kRecoverBlocks = 400;  // ~400 ms cool -> recover
 }  // namespace watchdog
 
 // ----------------------------------------------------------------------------
