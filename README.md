@@ -25,7 +25,9 @@ running at **<https://rainybit-code.github.io/propagator/>**. See
 Spore currently targets one platform:
 
 - **MCU board:** [Electrosmith Daisy Seed](https://electro-smith.com/products/daisy-seed)
-  (STM32H750, stereo codec, SDRAM).
+  or **Daisy Seed 3** (STM32H750, stereo codec, SDRAM). Both original Seed (rev4–rev7) and
+  Seed 3 are supported seamlessly by the same binary with libDaisy's automatic runtime
+  board detection.
 - **Built with:** [libDaisy](https://github.com/electro-smith/libDaisy) +
   [DaisySP](https://github.com/electro-smith/DaisySP) (vendored as submodules).
 - **Enclosure:** the [Cleveland Music Co. Hothouse](https://shop.clevelandmusicco.com/products/hothouse-digital-signal-processing-platform-kit)

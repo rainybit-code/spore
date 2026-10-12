@@ -19,6 +19,9 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
      smoothness without audio discontinuities.
 - **Toolchain: support official Arm GNU Embedded Toolchain** alongside xPack in `scripts/env.*`,
   resolving compatibility on Windows systems where Smart App Control blocks unsigned MinGW DLLs.
+- **Hardware: Daisy Seed 3 compatibility.** Verified that the same unified firmware binary supports
+  both the original Daisy Seed (rev4–rev7) and the Daisy Seed 3 (Seed3), using libDaisy's automatic
+  runtime board detection.
 
 ## [v0.5.1] - 2026-09-07
 - **Maintenance release: vendored libDaisy bumped to upstream HEAD** (`c02245d` -> `cc146d5`).
