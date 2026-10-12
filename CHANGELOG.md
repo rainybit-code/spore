@@ -1,14 +1,16 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to the Spore firmware are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+
+## [v0.5.2] - 2026-10-12
 - **Fix: audio crackle in tempo-synced delay.** When synced to BPM (1/4, 1/8, 1/8., 1/16),
   the delay line crackled heavily due to two issues:
   1. Incoming MIDI clock tick intervals were measured with 1 ms resolution (`System::GetNow()`),
-     causing the calculated tempo to oscillate by ±1 BPM on every tick due to integer quantization
+     causing the calculated tempo to oscillate by Â±1 BPM on every tick due to integer quantization
      and USB jitter. `MidiClock` now tracks ticks with microsecond resolution (`System::GetUs()`)
      over a 24-tick (1 quarter note) sliding window.
   2. The delay buffer read pointer previously jumped instantaneously on tempo fluctuations without
@@ -20,14 +22,14 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [v0.5.1] - 2026-09-07
 - **Maintenance release: vendored libDaisy bumped to upstream HEAD** (`c02245d` -> `cc146d5`).
-  Four upstream commits — I2C4 alternate-function pin mapping fixes, SAI support for two blocks
+  Four upstream commits â€” I2C4 alternate-function pin mapping fixes, SAI support for two blocks
   with no master, a TCA9534 I2C GPIO-expander driver, and README link updates. None of them touch
   a path Spore uses; no functional change to the firmware.
 
 ## [v0.5.0] - 2026-06-26
-- **Patch dump/load + preset management over USB MIDI** (`docs/MIDI_PROTOCOL.md` §3-4).
+- **Patch dump/load + preset management over USB MIDI** (`docs/MIDI_PROTOCOL.md` Â§3-4).
   New SysEx commands let Propagator drive the on-device presets it previously couldn't see:
-  `0x10`/`0x50` dump the full live patch (device → editor, so a hardware tweak or a recall
+  `0x10`/`0x50` dump the full live patch (device â†’ editor, so a hardware tweak or a recall
   syncs the UI), `0x11` loads a patch, and `0x20`/`0x21`/`0x22` save / recall / list the three
   QSPI slots of the active mode, with `0x52` reporting slot occupancy + the active slot. A
   Program Change is an alias for recall. The slots are the same ones the Footswitch-2 gesture
@@ -36,11 +38,11 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 - **Fix: intermittent crackle in Synth mode under load.** The crackle was a per-block CPU
   spike, not sustained load (so the watchdog, which only sheds after ~150 ms, never caught
   it): a moving filter envelope changed the cutoff every sample, forcing a per-sample
-  `SetFreq` (Svf `sinf`+`powf` / Moog polynomial) on every voice — and a chord put all 6
+  `SetFreq` (Svf `sinf`+`powf` / Moog polynomial) on every voice â€” and a chord put all 6
   voices on that path at once, tipping a block past its deadline. The voice filter now
-  recomputes its coefficients at **control rate** (every 8 samples, ~6 kHz — inaudible for
+  recomputes its coefficients at **control rate** (every 8 samples, ~6 kHz â€” inaudible for
   sweeps) while keeping the existing "skip when unchanged" fast path for static patches.
-  The audio **block size also goes 48 → 64** (~1.3 ms @ 48 kHz) for more headroom against
+  The audio **block size also goes 48 â†’ 64** (~1.3 ms @ 48 kHz) for more headroom against
   transient spikes.
 
 ## [v0.4.0] - 2026-06-25
@@ -50,16 +52,16 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   existing soft-takeover, so physical pots don't jump. LEDs show the active preset
   (right = 1, left = 2, both = 3).
 - **Run from SRAM via the Daisy bootloader** (`APP_TYPE=BOOT_SRAM`). The firmware outgrew the
-  128 KB internal flash, so it now loads from QSPI into SRAM — hundreds of KB of headroom. Uses
+  128 KB internal flash, so it now loads from QSPI into SRAM â€” hundreds of KB of headroom. Uses
   the fast 10 ms bootloader (near-instant boot). **Flashing changed**: install the bootloader
   once with `scripts/install-bootloader.{sh,ps1}`, then flash the app with
-  `scripts/flash.{sh,ps1}` — or let Propagator do it. The wavetables moved to SDRAM to fit the
+  `scripts/flash.{sh,ps1}` â€” or let Propagator do it. The wavetables moved to SDRAM to fit the
   SRAM build's smaller default `.bss`.
-- **Automated/remote flashing.** **CC 118 ≥ 64** reboots into the Daisy bootloader with an
+- **Automated/remote flashing.** **CC 118 â‰¥ 64** reboots into the Daisy bootloader with an
   infinite DFU window, so Propagator can reflash the app over WebUSB without any button timing.
   (CC 119 still reboots to the STM ROM DFU, now used to update the bootloader itself.) Releases
   also publish `spore-vX.Y.Z-bootloader.bin` so the editor can install the bootloader too.
-- **Removed the "hold both footswitches → DFU" gesture.** Enter DFU over MIDI (CC 118 for the
+- **Removed the "hold both footswitches â†’ DFU" gesture.** Enter DFU over MIDI (CC 118 for the
   app, CC 119 for the bootloader) or with the Daisy Seed's BOOT+RESET buttons. Frees the
   footswitch combinations for presets.
 - **Lower audio-CPU on the voice path** (no audible change): the per-voice filter only
@@ -67,7 +69,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   static-filter patches skip a `sinf`+`powf` (Svf) or coefficient polynomial (Moog) every
   sample; unison detune offsets are precomputed per block instead of dividing per sample;
   and the final hard clamp is folded into the master limiter (one less buffer pass).
-- **Link-time optimization** (`-flto`) trims ~1.5 KB of internal flash (98.2% → 97.1%);
+- **Link-time optimization** (`-flto`) trims ~1.5 KB of internal flash (98.2% â†’ 97.1%);
   `usb_identity.c` is kept out of LTO so its USB-descriptor override stays deterministic.
 - **CI checks a CHANGELOG entry** on every PR (skippable via a `skip-changelog` /
   `dependencies` label), and the PR template now lists only the manual items CI can't
@@ -83,7 +85,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 ## [v0.3.4] - 2026-06-24
 - **New Granular engine controls** (`config/gran_params.h`, CC 94-97) for the Propagator
   GRANULAR pod, beyond the 6 physical knobs: **Reverse** (backwards-grain probability, was a
-  fixed 30%), **Width** (per-grain stereo pan spread — granular is now stereo), **Shape**
+  fixed 30%), **Width** (per-grain stereo pan spread â€” granular is now stereo), **Shape**
   (grain window soft Hann -> hard flat-top gate), and **Scale-lock** (snap grain pitches to
   off / major / minor / pentatonic). Defaults reproduce the previous sound.
 
@@ -139,32 +141,32 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   (freeze / re-seed), CC 93 = TOGGLE 2 variant. Modes now read an overridable `ctx.variant`
   instead of reading Toggle 2 directly, so the whole control surface is drivable over MIDI.
 - **Fix Generative-mode CPU overload / MIDI lockup.** Generative ran its own `ReverbSc`
-  **and** the global FX reverb (double reverb) â†’ the audio callback overran and starved MIDI.
+  **and** the global FX reverb (double reverb) Ã¢â€ â€™ the audio callback overran and starved MIDI.
   The global FX path is now skipped in Generative (it has its own reverb).
 - **Clear processing on mode change.** New `GlobalFx::Reset()` clears the FX delay/reverb
   tail, and each mode now implements `OnEnter()` to silence its voices/grains/reverb, so
   nothing from the previous mode lingers (or keeps costing CPU) into the next.
 - **CPU watchdog.** If the callback stays overloaded (~150 ms), `g_overload` latches: the
-  global FX is shed and the onboard LED fast-blinks (~5 Hz). Cleared by a mode/FX change â€”
+  global FX is shed and the onboard LED fast-blinks (~5 Hz). Cleared by a mode/FX change Ã¢â‚¬â€
   i.e. change something to regain control.
 
 ## [v0.2.1] - 2026-06-18
 - **Steps mod-matrix source** (#8): the logistic-map (stepped) chaos `ChaosStep` is now a
-  routable Synth matrix source (was computed but unused). Source encoding widened `*7`â†’`*8`
-  (`synth_mode.h`); Propagator gains the jack with a v2â†’v3 patch migration.
+  routable Synth matrix source (was computed but unused). Source encoding widened `*7`Ã¢â€ â€™`*8`
+  (`synth_mode.h`); Propagator gains the jack with a v2Ã¢â€ â€™v3 patch migration.
 - **Live Chaos controls + telemetry**: Lorenz **speed** is now tunable over **CC 18**
   (`ModEngine::SetChaosSpeed`, range in `params::mod`). New SysEx **chaos-state** query
-  (`F0 7D 03 F7` â†’ `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it
-  live â€” reports the already-computed value, so **no extra audio-CPU cost**.
+  (`F0 7D 03 F7` Ã¢â€ â€™ `0x43 <x> <z>`) reports the attractor's X/Z so Propagator can draw it
+  live Ã¢â‚¬â€ reports the already-computed value, so **no extra audio-CPU cost**.
 
 ## [v0.2.0] - 2026-06-18
 - **Chaos modulation sources**: a Lorenz attractor (smooth) + logistic map (stepped)
-  added to the shared `ModEngine` (`mod/modulation.h`) â€” deterministic-but-never-repeating
+  added to the shared `ModEngine` (`mod/modulation.h`) Ã¢â‚¬â€ deterministic-but-never-repeating
   movement. Wired into **Generative** (chaotic filter sway + wavetable-scan drift) and
   **Granular** (density drift). Params in `params::mod`. See `docs/MODULATION.md`.
 - **Chaos as a Synth mod-matrix source** (#7): route the Lorenz chaos to any destination
-  via the patchbay. Source encoding widened from `*6`â†’`*7` (`synth_mode.h`); Propagator
-  gains the matching jack (with a v1â†’v2 patch migration so old routings keep their meaning).
+  via the patchbay. Source encoding widened from `*6`Ã¢â€ â€™`*7` (`synth_mode.h`); Propagator
+  gains the matching jack (with a v1Ã¢â€ â€™v2 patch migration so old routings keep their meaning).
 
 ## [v0.1.2] - 2026-06-18
 - **Fix reverb crackle**: enable the FPU's flush-to-zero (`FPSCR.FZ`) at boot. The
@@ -172,7 +174,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
   *access*, so a decaying `ReverbSc` tail (no denormal guard of its own) stalled the
   FPU as it rang out. FZ also protects the delay/filter feedback paths.
 - **CPU-load metering**: instrument the audio callback with `CpuLoadMeter` and report
-  avg/peak load over SysEx (query `F0 7D 02 F7` â†’ reply `F0 7D 42 <avg%> <max%> F7`).
+  avg/peak load over SysEx (query `F0 7D 02 F7` Ã¢â€ â€™ reply `F0 7D 42 <avg%> <max%> F7`).
   Propagator shows it live. See `docs/MIDI_PROTOCOL.md`.
 
 ## [v0.1.1] - 2026-06-17
