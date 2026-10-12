@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this pr
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Fix: CPU overload, audio crackle, and reverb lockup in Generative mode.** Resolved persistent
+  audio degradation and high CPU usage in Mode 3 (Generative):
+  1. *MoogLadder filter lockup:* `RollPatch()` occasionally selected the CPU-intensive 4-pole
+     `MoogLadder` filter (which oversamples 2x and performs software double-precision `tanh` per
+     sample). Ambient mode now strictly uses the lightweight 2-pole `daisysp::Svf`.
+  2. *Reverb feedback runaway & NaNs:* High settings of Knob 4 (reverb) previously drove `ReverbSc`
+     feedback up to 0.99, causing positive feedback loops and numerical runaway to $\pm\infty$ / NaNs
+     in SDRAM buffers. Feedback is now capped to 0.94 max, voice feeds into reverb are clamped to
+     $[-1, 1]$, and automatic NaN/Inf detection in `ProcessBlock` resets the reverb state immediately
+     if corruption occurs.
+  3. *Voice headroom:* Active polyphony in Generative mode was adjusted from 5 voices to 4, providing
+     ~20% additional DSP headroom alongside long envelope swells and the dedicated reverb.
+  4. *Watchdog responsiveness:* Overload threshold reduced from 0.95 to 0.88, trip time reduced to
+     60 ms, and the deadband hysteresis was updated to a leaky integrator so bursty loads trigger voice
+     shedding reliably without leaving the watchdog stuck.
+  5. *FX toggle behavior:* Toggling FX no longer unconditionally clears the overload state while in
+     Generative mode.
+- **Documentation:** Added comprehensive hardware manual and control surface
+  vector diagrams for all three modes (`docs/MODES.md`, `docs/mode1-synth.svg`, `docs/mode2-granular.svg`,
+  and `docs/mode3-generative.svg`).
 
 ## [v0.5.3] - 2026-10-12
 - **Hardware: Daisy Seed 3 compatibility.** Verified that the same unified firmware binary supports
