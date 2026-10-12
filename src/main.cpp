@@ -321,8 +321,10 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
     static int last_fxsel = -1;
     if (fxsel != last_fxsel) {
         last_fxsel = fxsel;
-        g_overload = false;
-    }  // FX change = regain control
+        if (g_active != MODE_GENERATIVE) {
+            g_overload = false;  // FX change = regain control (for Synth / Granular)
+        }
+    }
     g_fx.SetMode(static_cast<GlobalFx::Mode>(fxsel));
     g_fx.SetTempo(g_clock.Bpm());  // tempo-synced delay follows the local clock
     g_fx.SetSync(g_delaySync);
@@ -395,8 +397,8 @@ void AudioCallback(AudioHandle::InputBuffer in, AudioHandle::OutputBuffer out, s
             over = 0;
             if (++under > kRecoverBlocks) g_overload = false;
         } else {
-            over = 0;
-            under = 0;
+            if (over > 0) --over;
+            if (under > 0) --under;
         }
     }
 }

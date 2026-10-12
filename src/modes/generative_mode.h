@@ -34,7 +34,7 @@ static daisysp::ReverbSc DSY_SDRAM_BSS s_gen_reverb;
 
 class GenerativeMode : public IMode {
   public:
-    static constexpr int kVoices = 5;
+    static constexpr int kVoices = 4;
 
     void Init(float sample_rate, Hothouse& /*hw*/) override {
         sr_ = sample_rate;
@@ -98,7 +98,7 @@ class GenerativeMode : public IMode {
             tone * (1.0f + (drift_ * 0.3f + wander * 0.6f) * ctx.mod.ChaosX());  // chaotic sway
         center_ = 48.0f + (ctx.sensors.Light() - 0.5f) * 12.0f;  // sensor nudges pitch center
 
-        s_gen_reverb.SetFeedback(0.84f + k_rev * 0.15f);
+        s_gen_reverb.SetFeedback(0.70f + k_rev * 0.24f);  // max 0.94 keeps loop stable
         s_gen_reverb.SetLpFreq(4000.0f + k_tone * 8000.0f);
 
         // Per-block voice params come from the seeded patch (timbre) + macro knobs.
@@ -151,7 +151,7 @@ class GenerativeMode : public IMode {
 
     void ProcessBlock(AudioHandle::InputBuffer /*in*/, AudioHandle::OutputBuffer out,
                       size_t size) override {
-        const int nv = shed_ ? ((kVoices + 1) / 2) : kVoices;  // overload: shed voices to recover
+        const int nv = shed_ ? 2 : kVoices;  // overload: shed voices to recover
         for (size_t n = 0; n < size; ++n) {
             float l = 0.0f, r = 0.0f;
             for (int i = 0; i < nv; ++i) {
@@ -160,10 +160,15 @@ class GenerativeMode : public IMode {
                 l += s * panL_[i];
                 r += s * panR_[i];
             }
-            l *= 0.30f;
-            r *= 0.30f;  // headroom for overlapping swells
+            l = daisysp::fclamp(l * 0.30f, -1.0f, 1.0f);
+            r = daisysp::fclamp(r * 0.30f, -1.0f, 1.0f);  // headroom for overlapping swells
             float wl, wr;
             s_gen_reverb.Process(l, r, &wl, &wr);
+            // Self-heal: if ReverbSc ever encounters NaN/Inf, reset buffer to stop loop lockup.
+            if (std::isnan(wl) || std::isinf(wl) || std::isnan(wr) || std::isinf(wr)) {
+                s_gen_reverb.Init(sr_);
+                wl = wr = 0.0f;
+            }
             out[0][n] = l * (1.0f - revMix_) + wl * revMix_;
             out[1][n] = r * (1.0f - revMix_) + wr * revMix_;
         }
@@ -195,10 +200,8 @@ class GenerativeMode : public IMode {
         pRes_ = daisysp::fclamp(0.10f + rng_.Unipolar() * 0.30f + tx * 0.20f, 0.0f, 0.85f);
         pDrive_ =
             (rng_.Unipolar() < 0.30f + tx * 0.50f) ? rng_.Unipolar() * (0.30f + tx * 0.55f) : 0.0f;
-        pFilter_ =
-            (rng_.Unipolar() < 0.15f + tx * 0.25f) ? 1 : 0;  // mostly cheap Svf; Moog rare (CPU)
-        pUni_ = 1;  // no unison in generative (5 voices + the
-                    // dedicated reverb already cost a lot)
+        pFilter_ = 0;  // clean 2-pole Svf only; MoogLadder is too heavy for multi-voice ambient
+        pUni_ = 1;     // no unison in generative
         pSubOct_ = (rng_.Unipolar() < 0.5f) ? 0.5f : 0.25f;
         pSubWave_ = (rng_.Unipolar() < 0.5f) ? daisysp::Oscillator::WAVE_POLYBLEP_SQUARE
                                              : daisysp::Oscillator::WAVE_SIN;
