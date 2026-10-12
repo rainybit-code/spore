@@ -36,6 +36,8 @@ Spore currently targets one platform:
 
 ## Control surface
 
+> 📖 **Mode Guide & Diagrams:** See [`docs/MODES.md`](docs/MODES.md) for full Teenage Engineering-style visual control diagrams and parameter reference for each mode.
+
 | Control      | Function |
 |--------------|----------|
 | **Toggle 1** | Mode: **UP** Synth · **MIDDLE** Granular · **DOWN** Generative *(use a 3-position switch)* |
