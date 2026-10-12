@@ -1,10 +1,14 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the Spore firmware are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Hardware: Daisy Seed 3 compatibility.** Verified that the same unified firmware binary supports
+  both the original Daisy Seed (rev4–rev7) and Daisy Seed 3 (Seed3), using libDaisy's automatic
+  runtime board version detection.
+- **Documentation:** Updated README with Daisy Seed 3 platform details.
 
 ## [v0.5.2] - 2026-10-12
 - **Fix: audio crackle in tempo-synced delay.** When synced to BPM (1/4, 1/8, 1/8., 1/16),
