@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the Spore firmware are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project
@@ -8,7 +8,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [v0.5.3] - 2026-10-12
 - **Hardware: Daisy Seed 3 compatibility.** Verified that the same unified firmware binary supports
-  both the original Daisy Seed (rev4â€“rev7) and Daisy Seed 3 (Seed3), using libDaisy's automatic
+  both the original Daisy Seed (rev4-rev7) and Daisy Seed 3 (Seed3), using libDaisy's automatic
   runtime board version detection.
 - **Documentation:** Updated README with Daisy Seed 3 platform details.
 
@@ -16,7 +16,7 @@ uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 - **Fix: audio crackle in tempo-synced delay.** When synced to BPM (1/4, 1/8, 1/8., 1/16),
   the delay line crackled heavily due to two issues:
   1. Incoming MIDI clock tick intervals were measured with 1 ms resolution (`System::GetNow()`),
-     causing the calculated tempo to oscillate by Ã‚Â±1 BPM on every tick due to integer quantization
+     causing the calculated tempo to oscillate by +/- 1 BPM on every tick due to integer quantization
      and USB jitter. `MidiClock` now tracks ticks with microsecond resolution (`System::GetUs()`)
      over a 24-tick (1 quarter note) sliding window.
   2. The delay buffer read pointer previously jumped instantaneously on tempo fluctuations without
