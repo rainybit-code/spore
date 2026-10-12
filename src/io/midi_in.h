@@ -78,10 +78,9 @@ inline bool PumpMidi(daisy::MidiUsbHandler& midi, MidiContext ctx) {
         auto msg = midi.PopEvent();
         switch (msg.type) {
             case daisy::SystemRealTime: {  // tempo clock / transport from GUI or device
-                uint32_t now = daisy::System::GetNow();
                 switch (msg.srt_type) {
                     case daisy::TimingClock:
-                        clock.Tick(now);
+                        clock.Tick(daisy::System::GetUs());
                         break;
                     case daisy::Start:
                         clock.Start();

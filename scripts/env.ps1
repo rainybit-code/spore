@@ -4,7 +4,7 @@
 $envRoot = Split-Path $PSScriptRoot -Parent
 $tc = Join-Path $envRoot "toolchain"
 if (Test-Path $tc) {
-  $arm = Get-ChildItem -Path $tc -Directory -Filter "xpack-arm-none-eabi-gcc-*" -ErrorAction SilentlyContinue | Select-Object -First 1
+  $arm = Get-ChildItem -Path $tc -Directory -Filter "*arm-none-eabi*" -ErrorAction SilentlyContinue | Select-Object -First 1
   $bt  = Get-ChildItem -Path $tc -Directory -Filter "xpack-windows-build-tools-*" -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($arm) { $env:PATH = (Join-Path $arm.FullName "bin") + ";" + $env:PATH }
   if ($bt)  { $env:PATH = (Join-Path $bt.FullName  "bin") + ";" + $env:PATH }

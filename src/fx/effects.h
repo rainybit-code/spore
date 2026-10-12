@@ -45,8 +45,13 @@ class GlobalFx {
         bpm_ = 120.0f;
         sync_ = 0;
         lp_l_ = lp_r_ = 0.0f;
+        target_delay_ = 48000.0f * 0.3f;
+        cur_delay_ = target_delay_;
+        delay_slew_coef_ = 1.0f - expf(-1.0f / (0.05f * sample_rate));
         s_fx_del_l.Init();
         s_fx_del_r.Init();
+        s_fx_del_l.SetDelay(cur_delay_);
+        s_fx_del_r.SetDelay(cur_delay_);
         reverb_.Init(sample_rate);
         reverb_.SetFeedback(0.85f);
         reverb_.SetLpFreq(12000.0f);
@@ -59,6 +64,9 @@ class GlobalFx {
             s_fx_del_l.Reset();
             s_fx_del_r.Reset();
             lp_l_ = lp_r_ = 0.0f;
+            cur_delay_ = target_delay_;
+            s_fx_del_l.SetDelay(cur_delay_);
+            s_fx_del_r.SetDelay(cur_delay_);
         }
         wet_ramp_ = 0.0f;  // fade the newly-engaged effect in from silence (~30 ms)
         mode_ = m;
@@ -72,6 +80,9 @@ class GlobalFx {
         s_fx_del_l.Reset();
         s_fx_del_r.Reset();
         lp_l_ = lp_r_ = 0.0f;
+        cur_delay_ = target_delay_;
+        s_fx_del_l.SetDelay(cur_delay_);
+        s_fx_del_r.SetDelay(cur_delay_);
         reverb_.Init(sr_);  // clears ReverbSc's internal state/tail
         wet_ramp_ = 0.0f;
     }
@@ -96,8 +107,7 @@ class GlobalFx {
         }
         if (ds < 1.0f) ds = 1.0f;
         if (ds > static_cast<float>(kFxDelayMax - 1)) ds = static_cast<float>(kFxDelayMax - 1);
-        s_fx_del_l.SetDelay(ds);
-        s_fx_del_r.SetDelay(ds);
+        target_delay_ = ds;
 
         fb_ = daisysp::fmap(fb, 0.0f, kDelayFbMax, daisysp::Mapping::LINEAR);
         float tone_hz =
@@ -121,6 +131,16 @@ class GlobalFx {
             const float wmix = mix_ * wet_ramp_;  // ramped wet level avoids the engage transient
             float dry_l = l[i], dry_r = r[i];
             if (mode_ == DELAY) {
+                float diff = target_delay_ - cur_delay_;
+                if (fabsf(diff) > 0.001f) {
+                    cur_delay_ += diff * delay_slew_coef_;
+                    s_fx_del_l.SetDelay(cur_delay_);
+                    s_fx_del_r.SetDelay(cur_delay_);
+                } else if (cur_delay_ != target_delay_) {
+                    cur_delay_ = target_delay_;
+                    s_fx_del_l.SetDelay(cur_delay_);
+                    s_fx_del_r.SetDelay(cur_delay_);
+                }
                 float d_l = s_fx_del_l.Read();
                 float d_r = s_fx_del_r.Read();
                 // One-pole lowpass in the feedback path = darker repeats.
@@ -157,6 +177,9 @@ class GlobalFx {
     float bpm_;       // clock tempo for synced delay
     int sync_;        // 0 = free (knob ms), 1..4 = tempo division
     Mode mode_;
+    float target_delay_;
+    float cur_delay_;
+    float delay_slew_coef_;
 };
 
 }  // namespace synthbox

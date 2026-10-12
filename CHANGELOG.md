@@ -1,10 +1,22 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to the Spore firmware are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project
 uses [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.PATCH`).
 
 ## [Unreleased]
+- **Fix: audio crackle in tempo-synced delay.** When synced to BPM (1/4, 1/8, 1/8., 1/16),
+  the delay line crackled heavily due to two issues:
+  1. Incoming MIDI clock tick intervals were measured with 1 ms resolution (`System::GetNow()`),
+     causing the calculated tempo to oscillate by ±1 BPM on every tick due to integer quantization
+     and USB jitter. `MidiClock` now tracks ticks with microsecond resolution (`System::GetUs()`)
+     over a 24-tick (1 quarter note) sliding window.
+  2. The delay buffer read pointer previously jumped instantaneously on tempo fluctuations without
+     smoothing. `GlobalFx` now slews the delay time per sample with a one-pole lowpass filter
+     ($\tau \approx 50\text{ ms}$), providing continuous fractional interpolation and tape-delay
+     smoothness without audio discontinuities.
+- **Toolchain: support official Arm GNU Embedded Toolchain** alongside xPack in `scripts/env.*`,
+  resolving compatibility on Windows systems where Smart App Control blocks unsigned MinGW DLLs.
 
 ## [v0.5.1] - 2026-09-07
 - **Maintenance release: vendored libDaisy bumped to upstream HEAD** (`c02245d` -> `cc146d5`).
